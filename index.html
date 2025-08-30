@@ -1,521 +1,378 @@
---<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <title>METAR Dashboard</title>
+  <meta charset="utf-8" />
+  <title>CAR/VEN METAR AND TAF</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@600;800&display=swap"
+    rel="stylesheet"
+  />
+
   <style>
     :root {
-      --bg: #fafafa;
-      --accent: #0d3b66;
-      --text: #05386b;
-      --text-muted: #5c677d;
-      --row1: #ffffff;
-      --row2: #e0e4e8;
-      --border: #c4ccd6;
-      --warn: #d62828;
-      --sigwx: #f77f00;
-      --recent: #ffd54f; /* highlight for recent updates (light theme) */
+      --bg:        #101820;
+      --panel:     #1a2a33;
+      --line:      #2a3b47;
+      --accent:    #66ffcc;
+      --text:      #f2f2f2;
+      --muted:     #4f5b62;
+      --warn:      #ff6666;
+      --highlight: var(--accent);
     }
-
-    body.dark {
-      --bg: #121212;
-      --accent: #03dac6;
-      --text: #e0e0e0;
-      --text-muted: #888888;
-      --row1: #1f1f1f;
-      --row2: #2a2a2a;
-      --border: #333333;
-      --warn: #ff6b6b;
-      --sigwx: #ffd166;
-      --recent: #7a5cff; /* highlight for recent updates (dark theme) */
-    }
-
-    body, table, th, td {
-      transition: background 0.3s, color 0.3s, border-color 0.3s;
-    }
-
-    html {
-      font-size: 18px;
-    }
+    *, *::before, *::after { box-sizing: border-box; }
 
     body {
-      margin: 0;
-      padding: 2rem;
-      font-family: "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      position: relative;
-    }
-
-    #theme-toggle {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 1.6rem;
-      color: var(--text);
-      padding: 0.2rem;
-    }
-
-    #refresh-btn {
-      position: absolute;
-      top: 1rem;
-      left: 1rem;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      padding: 0.4rem 0.8rem;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 1rem;
+      margin:0; padding:24px;
+      font-family:'Inter',sans-serif;
+      background:var(--bg); color:var(--text);
+      font-size:22px; line-height:1.4;
     }
 
     h1 {
-      text-align: center;
-      font-size: 2.5rem;
-      margin-bottom: 0.5rem;
-      color: var(--accent);
+      margin:0 0 16px;
+      text-align:center;
+      font-size:42px; font-weight:800;
+      color:var(--accent);
     }
 
-    #updated {
-      text-align: center;
-      font-size: 1rem;
-      color: var(--text-muted);
-      margin-bottom: 1.5rem;
+    #clocks {
+      display:flex;
+      justify-content:center;
+      gap: 40px;
+      font-size:24px;
+      margin-bottom:20px;
+      color:var(--accent);
     }
 
-    .table-container {
-      overflow-x: auto;
+    #controls {
+      text-align:center; margin-bottom:16px;
+    }
+    #controls button {
+      background:var(--panel);
+      color:var(--accent);
+      border:2px solid var(--line);
+      padding:8px 16px; font-size:18px;
+      margin:0 8px; cursor:pointer;
+    }
+    #controls button:hover {
+      background:var(--accent); color:var(--panel);
     }
 
+    #error {
+      text-align:center; color:var(--warn);
+      font-size:22px; min-height:28px; margin-bottom:12px;
+    }
+
+    .table-wrapper { overflow-x:auto; margin-bottom:8px; }
     table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 0 auto;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      background: var(--row1);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-      min-width: 900px;
+      width:100%; border-collapse:collapse;
+      font-family:monospace; font-size:30px;
     }
-
-    thead th {
-      background: var(--accent);
-      color: #fff;
-      padding: 0.8rem;
-      font-size: 1.5rem;
-      text-transform: uppercase;
-      border-bottom: 2px solid var(--border);
-    }
-
     th, td {
-      padding: 0.8rem;
-      text-align: center;
-      font-size: 1.4rem;
-      user-select: none;
-      border-bottom: 1px solid var(--border);
+      border:2px solid var(--line); padding:12px 16px;
+      text-align:center;
+      user-select:none;
+    }
+    th {
+      background:#003b5a; color:var(--accent);
+      font-weight:700;
+    }
+    td.station {
+      font-weight:700; color:var(--accent);
+      font-size:36px;
+    }
+    td.time {
+      font-size:32px; transition:background .5s,color .5s;
+    }
+    .highlight {
+      background:var(--accent); color:var(--bg);
+    }
+    .alert {
+      background:var(--warn); color:var(--bg);
+    }
+    tr.raw td {
+      background:var(--panel); color:#d0d7de;
+      text-align:left; font-size:20px; padding:8px 16px;
     }
 
-    th:not(:last-child),
-    td:not(:last-child) {
-      border-right: 1px solid var(--border);
+    #last-updated, #taf-updated {
+      font-size:14px; color:var(--muted); margin:8px 0;
     }
 
-    tbody tr:nth-child(odd) {
-      background: var(--row2);
+    #compact-taf {
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(360px,1fr));
+      gap:16px; margin-bottom:8px;
     }
-
-    tbody tr:nth-child(even) {
-      background: var(--row1);
+    .taf-card {
+      background:var(--panel);
+      border:2px solid var(--line);
+      border-radius:8px; padding:16px;
     }
-
-    td:hover {
-      background: var(--row2);
+    .taf-code {
+      font-family:monospace; font-weight:700;
+      color:var(--accent); font-size:28px;
     }
-
-    .station-cell {
-      text-align: left;
-      padding-left: 1.2rem;
+    .taf-issue {
+      font-size:20px; color:var(--muted); margin-left:12px;
     }
-
-    .station-cell .code {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--accent);
+    .taf-body {
+      margin-top:12px; font-family:monospace;
+      font-size:22px; line-height:1.4; word-break:break-word;
     }
-
-    .raw-row .raw-data {
-      background: var(--row1);
-      color: var(--text-muted);
-      font-family: "Courier New", monospace;
-      font-size: 1.1rem; /* bigger */
-      text-align: left;
-      padding: 1rem; /* more padding */
-      border-top: 1px solid var(--border);
-      cursor: default;
-      user-select: text;
-      white-space: pre-wrap; /* preserve newlines for TNCM two-line display */
-    }
-
-    .flash {
-      animation: flashTime 0.5s ease-in-out;
-    }
-    @keyframes flashTime {
-      0%   { background: var(--row1); color: var(--text); }
-      50%  { background: var(--accent); color: #fff; }
-      100% { background: var(--row1); color: var(--text); }
-    }
-
-    /* Highlighting */
-    .wx-bad { background: var(--warn); color: #fff; font-weight: bold; }
-    .wx-sig { background: var(--sigwx); color: #000; font-weight: bold; }
-
-    /* Recent update persistent highlight (30 minutes) */
-    .recent {
-      background: var(--recent) !important;
-      color: #000 !important;
-      font-weight: 700;
-      border-radius: 6px;
-      padding: 0.3rem;
-    }
-
-    /* Make the time cell stand out a bit when recent in dark mode text color */
-    body.dark .recent { color: #fff !important; }
   </style>
 </head>
 <body>
 
-  <button id="refresh-btn">⟳ Refresh</button>
-  <button id="theme-toggle" aria-label="Toggle theme">🌙</button>
-  <h1>Latest METARs</h1>
-  <div id="updated">Last Updated: —</div>
+  <h1>CAR/VEN METAR AND TAF</h1>
 
-  <div class="table-container">
+  <div id="clocks">
+    <div>Local: <span id="local-clock">--:--:--</span></div>
+    <div>UTC:   <span id="utc-clock">--:--:--</span></div>
+  </div>
+
+  <div id="controls">
+    <button id="mute-btn">Mute Beep</button>
+    <button id="refresh-btn">Refresh Now</button>
+    <button id="test-btn">Enter Test Mode</button>
+  </div>
+
+  <div id="error"></div>
+
+  <div class="table-wrapper">
     <table>
       <thead>
         <tr>
-          <th scope="col">Station</th>
-          <th scope="col">Time (Z)</th>
-          <th scope="col">Wind</th>
-          <th scope="col">Vis</th>
-          <th scope="col">Weather</th>
-          <th scope="col">Clouds</th>
-          <th scope="col">T/TDP (°C)</th>
-          <th scope="col">Pressure (hPa - inHg)</th>
+          <th>ICAO</th><th>Time</th><th>Wind</th><th>Vis</th>
+          <th>Wx</th><th>Clouds</th><th>Temp/Dew</th><th>QNH</th>
         </tr>
       </thead>
-      <tbody id="metar-body">
-        <tr><td colspan="8">Loading…</td></tr>
+      <tbody id="metar">
+        <tr><td colspan="8">Loading METAR…</td></tr>
       </tbody>
     </table>
   </div>
+  <div id="last-updated">METAR last updated: --:--:--</div>
+
+  <div id="compact-taf">
+    <div>Loading TAF…</div>
+  </div>
+  <div id="taf-updated">TAF last updated: --:--:--</div>
 
   <script>
-    const PROXY    = 'https://api.allorigins.win/raw?url=';
-    const RAW_URLS = {
-      TNCA: 'https://tgftp.nws.noaa.gov/data/raw/sa/sanu31.tnca..txt',
-      TNCB: 'https://tgftp.nws.noaa.gov/data/raw/sa/sadc31.ehdb..txt',
-      TNCC: 'https://tgftp.nws.noaa.gov/data/raw/sa/saca31.tncc..txt',
-      TNCM: 'https://tgftp.nws.noaa.gov/data/raw/sa/samn31.tncm..txt',
-      SVMI: 'https://tgftp.nws.noaa.gov/data/raw/sa/savn22.svmi..txt',
-      SVVA: 'https://tgftp.nws.noaa.gov/data/raw/sa/savn31.svva..txt'
-    };
-    const ORDER      = ['TNCA','TNCB','TNCC','TNCM','SVMI','SVVA'];
-    const REFRESH_MS = 20 * 1000;
-    const prevTimes  = {};
+  (async function(){
+    const proxy    = 'https://api.allorigins.win/raw?url=';
+    const stations = ['TNCA','TNCB','TNCC','TNCM','SVMI','SVVA'];
+    const tafs     = [
+      {c:'TNCC',u:'https://tgftp.nws.noaa.gov/data/raw/ft/ftnu31.tncc..txt'},
+      {c:'EHDB',u:'https://tgftp.nws.noaa.gov/data/raw/ft/ftdc31.ehdb..txt'},
+      {c:'TNCA',u:'https://tgftp.nws.noaa.gov/data/raw/ft/ftnu50.tnca..txt'}
+    ];
 
-    // how long (ms) to keep the "recent" color after a detected update
-    const RECENT_MS = 30 * 60 * 1000; // 30 minutes
+    const metarTbody = document.getElementById('metar'),
+          tafDiv      = document.getElementById('compact-taf'),
+          errDiv      = document.getElementById('error'),
+          lastUp      = document.getElementById('last-updated'),
+          tafUp       = document.getElementById('taf-updated'),
+          muteBtn     = document.getElementById('mute-btn'),
+          refreshBtn  = document.getElementById('refresh-btn'),
+          testBtn     = document.getElementById('test-btn');
 
-    // store expiration timestamps (ms since epoch) for each station's recent highlight
-    let recentExpires = {};
+    let prevTimes = {},
+        lastUpdateMillis = {},
+        beepEnabled = true,
+        testMode = false;
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const btn   = document.getElementById('theme-toggle');
-      const saved = localStorage.getItem('theme');
-      if (saved === 'dark') document.body.classList.add('dark');
-      updateIcon();
+    function pad(n){ return n < 10 ? '0' + n : n; }
+    function nowStamp(){
+      const d = new Date();
+      return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+    function updateClocks(){
+      const d = new Date();
+      document.getElementById('local-clock').textContent =
+        `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      document.getElementById('utc-clock').textContent   =
+        `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+    }
+    setInterval(updateClocks,500); updateClocks();
 
-      // load persisted recentExpires (and purge expired)
-      loadRecentExpires();
+    function clean(s){
+      return s
+        .replace(/\s(?:TEMPO|BECMG|PROB\d{2}|FM\d{6})[\s\S]*/i,'')
+        .replace(/\bAUTO\b|\bCOR\b/gi,'')
+        .trim();
+    }
 
-      btn.addEventListener('click', () => {
-        document.body.classList.toggle('dark');
-        localStorage.setItem('theme',
-          document.body.classList.contains('dark') ? 'dark' : 'light'
-        );
-        updateIcon();
+    function parseM(raw){
+      const tks = clean(raw).split(/\s+/);
+      const time = tks[1] || '';
+      const mainWind = tks.find(x =>
+        /^(?:VRB|\d{3})\d{2}(?:G\d{2})?KT$/.test(x) || /^\/{5}KT$/.test(x)
+      ) || '';
+      const varWind = tks.filter(x => /^\d{3}V\d{3}$/.test(x)).join(' ');
+      const w       = [mainWind,varWind].filter(Boolean).join(' ');
+      const hasGust = /G\d{2}/.test(mainWind);
+      const gustVal = +(mainWind.match(/G(\d{2})/)?.[1] || 0);
+      const vis    = tks.find(x => /^\d{4}$/.test(x)) || '';
+      const visNum = parseInt(vis,10) || 9999;
+      const lowVis = visNum < 5000;
+      const wx     = tks.filter(x =>
+        /^(?:\+|-)?(?:VC)?(?:MI|PR|BC|DR|BL|SH|TS|FZ)?(?:DZ|RA|SN|SG|PL|GR|GS|UP|BR|FG|FU|DU|SA|HZ|PY|PO|SQ|FC|SS|DS|VA)$/.test(x)
+      ).join(' ');
+      const hasWx  = !!wx;
+      const cl     = tks.filter(x => /^(?:FEW|SCT|BKN|OVC).*/.test(x)).join(' ');
+      const hasCB  = /TCU|CB/.test(cl);
+      const td     = tks.find(x => /^M?\d{2}\/M?\d{2}$/.test(x)) || '';
+      const qp     = tks.find(x => /^Q\d{4}$/.test(x));
+      const qnh    = qp
+        ? `${qp.slice(1)}-${(parseInt(qp.slice(1)) * 0.02953).toFixed(2)}`
+        : '—';
+      return { time, w, vis, wx, cl, td, qnh, hasGust, gustVal, lowVis, hasWx, hasCB };
+    }
+
+    async function ftxt(url){
+      const r = await fetch(proxy + encodeURIComponent(url));
+      if(!r.ok) throw r;
+      return r.text();
+    }
+
+    async function loadM(){
+      let rows = '', err = '';
+
+      if (testMode) {
+        // same test data for all stations:
+        for (let c of stations) {
+          const raw = `${c} 121200Z 09025G36KT 5000 2000N +TSRA FEW///CB BKN016TCU`;
+          const d   = parseM(raw);
+
+          // trigger alarm for gust ≥35 or TSRA
+          if (d.gustVal >= 35 || /TSRA/.test(d.wx)) {
+            new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg').play();
+          }
+
+          rows += `
+            <tr>
+              <td class="station">${c}</td>
+              <td class="time highlight">${d.time}</td>
+              <td class="${d.hasGust ? 'alert' : ''}">${d.w}</td>
+              <td class="${d.lowVis ? 'alert' : ''}">${d.vis}</td>
+              <td class="${d.hasWx ? 'alert' : ''}">${d.wx}</td>
+              <td class="${d.hasCB ? 'alert' : ''}">${d.cl}</td>
+              <td>${d.td}</td>
+              <td>${d.qnh}</td>
+            </tr>
+            <tr class="raw"><td colspan="8">${raw}</td></tr>`;
+        }
+
+        metarTbody.innerHTML = rows;
+        lastUp.textContent    = 'METAR test mode';
+        return;
+      }
+
+      // live mode fetch
+      for (let c of stations) {
+        try {
+          const txt   = await ftxt(`https://tgftp.nws.noaa.gov/data/observations/metar/stations/${c}.TXT`);
+          const lines = txt.trim().split(/\r?\n/).filter(Boolean);
+          const raw   = lines.pop();
+          const d     = parseM(raw);
+
+          if (c === 'TNCA' && beepEnabled && (d.gustVal >= 35 || /TS/.test(d.wx))) {
+            new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg').play();
+          }
+
+          const changed = prevTimes[c] && prevTimes[c] !== d.time;
+          if (changed && beepEnabled) {
+            lastUpdateMillis[c] = Date.now();
+            new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
+          }
+          if (!prevTimes[c]) lastUpdateMillis[c] = Date.now();
+          prevTimes[c] = d.time;
+          const age   = Date.now() - (lastUpdateMillis[c] || 0);
+          const isNew = age < 10 * 60 * 1000;
+
+          rows += `
+            <tr>
+              <td class="station">${c}</td>
+              <td class="time${isNew ? ' highlight' : ''}">${d.time}</td>
+              <td class="${d.hasGust ? 'alert' : ''}">${d.w}</td>
+              <td class="${d.lowVis ? 'alert' : ''}">${d.vis}</td>
+              <td class="${d.hasWx ? 'alert' : ''}">${d.wx}</td>
+              <td class="${d.hasCB ? 'alert' : ''}">${d.cl}</td>
+              <td>${d.td}</td>
+              <td>${d.qnh}</td>
+            </tr>
+            <tr class="raw"><td colspan="8">${raw}</td></tr>`;
+        }
+        catch(e){
+          err += `Error ${c} `;
+        }
+      }
+
+      metarTbody.innerHTML = rows;
+      errDiv.textContent    = err;
+      lastUp.textContent    = `METAR last updated: ${nowStamp()}`;
+    }
+
+    async function loadT(){
+      let cards = '', err = '';
+      for (let tf of tafs) {
+        try {
+          const txt   = await ftxt(tf.u);
+          const s     = clean(txt.replace(/\s+/g,' '));
+          const issue = (s.match(/\b\d{4}Z\b/) || [])[0] || '';
+          cards += `
+            <div class="taf-card">
+              <div>
+                <span class="taf-code">${tf.c}</span>
+                <span class="taf-issue">${issue}</span>
+              </div>
+              <div class="taf-body">${s}</div>
+            </div>`;
+        }
+        catch(e){
+          err += `Error ${tf.c} `;
+        }
+      }
+      tafDiv.innerHTML    = cards;
+      errDiv.textContent += err;
+      tafUp.textContent   = `TAF last updated: ${nowStamp()}`;
+    }
+
+    document.querySelector('table').addEventListener('dblclick', e => {
+      const td = e.target.closest('td');
+      if (!td || td.closest('tr').classList.contains('raw')) return;
+      const text = td.textContent.trim();
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        td.classList.add('highlight');
+        setTimeout(() => td.classList.remove('highlight'), 500);
       });
-      document.getElementById('refresh-btn').addEventListener('click', fetchAndRender);
-      fetchAndRender();
-      setInterval(fetchAndRender, REFRESH_MS);
     });
 
-    function updateIcon() {
-      document.getElementById('theme-toggle').textContent =
-        document.body.classList.contains('dark') ? '☀️' : '🌙';
-    }
+    muteBtn.addEventListener('click', () => {
+      beepEnabled = !beepEnabled;
+      muteBtn.textContent = beepEnabled ? 'Mute Beep' : 'Unmute Beep';
+    });
+    refreshBtn.addEventListener('click', () => {
+      loadM(); loadT();
+    });
+    testBtn.addEventListener('click', () => {
+      testMode = !testMode;
+      testBtn.textContent = testMode ? 'Exit Test Mode' : 'Enter Test Mode';
+      loadM();
+    });
 
-    function loadRecentExpires() {
-      try {
-        const raw = localStorage.getItem('recentExpires');
-        if (!raw) return;
-        const parsed = JSON.parse(raw);
-        const now = Date.now();
-        for (const k in parsed) {
-          const v = Number(parsed[k]);
-          if (!isFinite(v)) continue;
-          if (v > now) recentExpires[k] = v;
-        }
-        // persist cleaned version back
-        saveRecentExpires();
-      } catch (e) {
-        console.warn('Failed loading recentExpires', e);
-        recentExpires = {};
-      }
-    }
-
-    function saveRecentExpires() {
-      try {
-        localStorage.setItem('recentExpires', JSON.stringify(recentExpires));
-      } catch (e) {
-        // ignore storage failures
-      }
-    }
-
-    async function fetchAndRender() {
-      const tbody = document.getElementById('metar-body');
-      tbody.innerHTML = '';
-      for (const code of ORDER) {
-        let r;
-        let originalTxt = '';
-        try {
-          const res = await fetch(PROXY + encodeURIComponent(RAW_URLS[code]));
-          if (!res.ok) throw new Error(res.statusText);
-          originalTxt = await res.text();
-          r = parseMETAR(originalTxt);
-        } catch (e) {
-          r = { station: code, time: '—', wind: '—', vis: '—', weather: '—', clouds: '—', temp: '—', dew: '—', pressure: '—', raw: 'Error fetching', rawSource2: null };
-        }
-
-        // For TNCM specifically: if there's a Q#### in the source, prefer that and format "1011 - 29.85"
-        if (r.station === 'TNCM' && originalTxt) {
-          const m = originalTxt.match(/Q(\d{4})/i);
-          if (m) {
-            const hpa = Number(m[1]);
-            if (isFinite(hpa) && hpa > 0) {
-              const inHg = (hpa * 0.02953).toFixed(2);
-              r.pressure = `${hpa} - ${inHg}`; // exactly "1011 - 29.85" style as requested
-            }
-          }
-        }
-
-        const oldTime = prevTimes[r.station];
-        const isNew   = oldTime !== undefined && oldTime !== r.time;
-        prevTimes[r.station] = r.time;
-
-        // If change detected, set recent highlight expiry
-        if (isNew) {
-          recentExpires[r.station] = Date.now() + RECENT_MS;
-          saveRecentExpires();
-        }
-
-        // purge expired entries on each render (keeps localStorage tidy)
-        const now = Date.now();
-        for (const s in recentExpires) {
-          if (recentExpires[s] <= now) delete recentExpires[s];
-        }
-        saveRecentExpires();
-
-        const tr = document.createElement('tr');
-        const td0 = document.createElement('td');
-        td0.classList.add('station-cell');
-        td0.innerHTML = `<div class="code">${r.station}</div>`;
-        tr.appendChild(td0);
-
-        [r.time, r.wind, r.vis, r.weather, r.clouds,
-         `${r.temp}/${r.dew}`, r.pressure
-        ].forEach((val, idx) => {
-          const td = document.createElement('td');
-          td.textContent = val || '—';
-
-          if (idx === 3 && val !== '—') {
-            if (/TS|FG|SN|GR|SS/.test(val)) td.classList.add('wx-bad');
-            else if (/RA|DZ|SH|BR/.test(val)) td.classList.add('wx-sig');
-          }
-
-          // Time cell: index 0. Add flash and persistent recent class when appropriate.
-          if (idx === 0 && isNew) {
-            td.classList.add('flash');
-            setTimeout(() => td.classList.remove('flash'), 600);
-          }
-
-          if (idx === 0 && recentExpires[r.station] && Date.now() < recentExpires[r.station]) {
-            td.classList.add('recent');
-            const exp = new Date(recentExpires[r.station]);
-            td.title = `Highlighted until: ${exp.toLocaleString()}`;
-          }
-
-          // Also set the UTC->local hover title when the time looks like ddhhmmZ
-          if (idx === 0 && r.time.match(/^\d{6}Z$/)) {
-            const dd = +r.time.slice(0,2);
-            const hh = r.time.slice(2,4);
-            const mm = r.time.slice(4,6);
-            const utc = new Date();
-            // keep this month/year as now to avoid weird wrap issues
-            const nowDate = new Date();
-            utc.setUTCFullYear(nowDate.getUTCFullYear());
-            utc.setUTCMonth(nowDate.getUTCMonth());
-            utc.setUTCDate(dd);
-            utc.setUTCHours(+hh, +mm, 0, 0);
-            const prevTitle = td.title ? td.title + ' — ' : '';
-            td.title = prevTitle + 'Local: ' + utc.toLocaleTimeString('en-US', { timeZone: 'America/Curacao', hour12: false });
-          }
-
-          td.addEventListener('dblclick', () => copyText(val, td));
-          tr.appendChild(td);
-        });
-
-        tbody.appendChild(tr);
-
-        // RAW row: for TNCM show the two source lines (METAR line + next line if present)
-        const trRaw = document.createElement('tr');
-        trRaw.classList.add('raw-row');
-        const tdRaw = document.createElement('td');
-        tdRaw.colSpan = 8;
-        tdRaw.classList.add('raw-data');
-
-        if (r.station === 'TNCM' && r.rawSource2) {
-          // preserve newlines in display; textContent + white-space: pre-wrap in CSS
-          tdRaw.textContent = r.rawSource2;
-        } else {
-          tdRaw.textContent = r.raw;
-        }
-
-        trRaw.appendChild(tdRaw);
-        tbody.appendChild(trRaw);
-      }
-
-      // Update the Last Updated area with both Local (America/Curacao) and UTC times
-      const now = new Date();
-      const localStr = now.toLocaleTimeString('en-US', { hour12: false, timeZone: 'America/Curacao' });
-      const utcStr   = now.toLocaleTimeString('en-US', { hour12: false, timeZone: 'UTC' });
-      document.getElementById('updated').textContent =
-        `Last Updated — Local (America/Curacao): ${localStr} — UTC: ${utcStr}`;
-    }
-
-    function parseMETAR(txt) {
-      // txt is the full fetched text. We'll extract:
-      // - a cleaned single-line 'raw' (same as before)
-      // - rawSource2: the METAR line and the next source line (if present) for TNCM use
-      const linesAll = txt.split('\n').map(l => l.replace(/\r/g, '').trim());
-      // find index of the line containing 'METAR'
-      let metarIdx = -1;
-      for (let i = 0; i < linesAll.length; i++) {
-        if (/\bMETAR\b/i.test(linesAll[i])) { metarIdx = i; break; }
-      }
-
-      // build rawSource2: METAR line + next line if exists
-      let rawSource2 = null;
-      if (metarIdx >= 0) {
-        const a = linesAll[metarIdx] || '';
-        const b = (linesAll[metarIdx + 1] || '').trim();
-        rawSource2 = b ? (a + '\n' + b) : a;
-      } else {
-        // fallback: first two non-empty lines
-        const nonEmpty = linesAll.filter(Boolean);
-        rawSource2 = nonEmpty.slice(0,2).join('\n') || (nonEmpty[0] || '');
-      }
-
-      // previous single-line extraction logic (clean out RMK and trailing =) to show a concise single-line raw
-      let line = linesAll.find(l => /\bMETAR\b/i.test(l)) || linesAll[0] || '';
-      line = line.replace(/RMK.*/i, '').replace(/=$/, '').trim();
-      const raw = line;
-
-      let toks = raw.split(/\s+/);
-
-      let i = toks.indexOf('METAR') + 1;
-      let station = toks[i++] || '';
-      let time    = toks[i++] || '';
-
-      // skip COR if present
-      if (toks[i] === 'COR') i++;
-
-      if (toks[i] === 'AUTO') i++;
-
-      // WIND
-      let wind = '—';
-      if (toks[i]?.endsWith('KT')) {
-        wind = toks[i].replace(/G\d{2}(?=KT)/, '');
-        i++;
-      }
-      if (/^\d{3}V\d{3}$/.test(toks[i])) i++;
-
-      // VIS
-      let vis = '—';
-      if (toks[i] === 'CAVOK') {
-        vis = 'CAVOK';
-        i++;
-      } else if (/^\d{4}(?:[NSEW]{1,2})?$/.test(toks[i])) {
-        const visPieces = [];
-        while (toks[i] && /^\d{4}(?:[NSEW]{1,2})?$/.test(toks[i])) {
-          visPieces.push(toks[i++]);
-        }
-        vis = visPieces.join(' ');
-      }
-
-      // WEATHER
-      const wx = [];
-      while (
-        toks[i] &&
-        !isCloud(toks[i]) &&
-        !/^\d+\/-?\d+$/.test(toks[i])
-      ) {
-        wx.push(toks[i++]);
-      }
-      const weather = wx.join(' ') || '—';
-
-      // CLOUDS
-      const cl = [];
-      while (toks[i] && isCloud(toks[i])) {
-        cl.push(toks[i++]);
-      }
-      const clouds = cl.join(' ') || 'CLR';
-
-      // TEMP/DEW
-      const td = toks[i++] || 'M00/M00';
-      const [temp, dew] = td.split('/').map(v => v.replace(/^M/, '-'));
-
-      // PRESSURE (initial detection; may be overridden for TNCM)
-      let pressure = '—';
-      if (/^Q\d{4}$/.test(toks[i])) {
-        const hpa = +toks[i].slice(1);
-        const inHg = (hpa * 0.02953).toFixed(2);
-        pressure = `${hpa} – ${inHg}`; i++;
-      } else if (/^A\d{4}$/.test(toks[i])) {
-        const inHgVal = +toks[i].slice(1) / 100;
-        const hpaVal  = Math.round(inHgVal / 0.02953);
-        pressure = `${hpaVal} – ${inHgVal.toFixed(2)}`; i++;
-      }
-
-      return { station, time, wind, vis, weather, clouds, temp, dew, pressure, raw, rawSource2 };
-    }
-
-    function isCloud(tok) {
-      return /^(FEW|SCT|BKN|OVC)(\d{3}|\/\/\/)(CB|TCU)?$/.test(tok) || tok === 'CAVOK';
-    }
-
-    function copyText(txt, el) {
-      navigator.clipboard.writeText(txt)
-        .then(() => {
-          el.classList.add('flash');
-          setTimeout(() => el.classList.remove('flash'), 400);
-        });
-    }
+    await loadM();
+    await loadT();
+    setInterval(loadM, 60 * 1000);
+    setInterval(loadT, 10 * 60 * 1000);
+  })();
   </script>
-
 </body>
 </html>
