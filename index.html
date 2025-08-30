@@ -2,15 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>CAR/VEN METAR & TAF + Bonaire Visibility</title>
+  <title>CAR/VEN METAR AND TAF + Bonaire Visibility</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Google Font -->
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;800&display=swap" rel="stylesheet"/>
 
   <style>
+    /* COLOR PALETTE */
     :root {
       --bg:        #101820;
       --panel:     #1a2a33;
@@ -22,21 +23,19 @@
       --highlight: var(--accent);
     }
 
-    *, *::before, *::after {
-      box-sizing: border-box;
-    }
-
+    /* GLOBAL */
+    *, *::before, *::after { box-sizing: border-box; }
     body {
-      margin: 0; 
-      padding: 24px;
+      margin: 0; padding: 24px;
       font-family: 'Inter', sans-serif;
       background: var(--bg);
       color: var(--text);
+      font-size: 22px; line-height: 1.4;
       position: relative;
     }
 
-    /* Bonaire Visibility (top-left) */
-    #bonaire-vis-widget {
+    /* BONAIRE WIDGET (top-left) */
+    .weather-widget {
       position: absolute;
       top: 24px;
       left: 24px;
@@ -45,35 +44,41 @@
       border: 2px solid var(--line);
       border-radius: 8px;
       padding: 16px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      user-select: none;
       cursor: default;
     }
-    #bonaire-vis-widget h2 {
+    .weather-widget h2 {
       margin: 0 0 8px;
       font-size: 20px;
       font-weight: 600;
       color: var(--accent);
     }
-    #bonaire-vis-widget .vis-value {
+    .weather-widget .vis-value {
       font-size: 28px;
       font-weight: 800;
     }
-    #bonaire-vis-widget .vis-value.low {
+    .weather-widget .vis-value.low {
       color: var(--warn);
     }
-    #bonaire-vis-widget .timestamp {
+    .weather-widget .timestamp {
       margin-top: 8px;
       font-size: 14px;
       color: var(--muted);
     }
+    .weather-widget[title] { title: inherit; }
 
-    /* Page Title, Clocks & Controls */
+    /* HEADER TITLE */
     h1 {
-      text-align: center;
       margin-top: 0;
+      text-align: center;
       font-size: 42px;
       font-weight: 800;
       color: var(--accent);
     }
+
+    /* CLOCKS */
     #clocks {
       display: flex;
       justify-content: center;
@@ -82,6 +87,8 @@
       margin: 16px 0 24px;
       color: var(--accent);
     }
+
+    /* CONTROLS */
     #controls {
       text-align: center;
       margin-bottom: 24px;
@@ -90,18 +97,18 @@
       background: var(--panel);
       color: var(--accent);
       border: 2px solid var(--line);
-      border-radius: 4px;
       padding: 8px 16px;
       font-size: 18px;
       margin: 0 8px;
       cursor: pointer;
+      border-radius: 4px;
     }
     #controls button:hover {
       background: var(--accent);
       color: var(--panel);
     }
 
-    /* METAR Table */
+    /* METAR TABLE */
     .table-wrapper {
       overflow-x: auto;
       margin-bottom: 16px;
@@ -130,7 +137,7 @@
     }
     td.time {
       font-size: 32px;
-      transition: background .5s, color .5s;
+      transition: background 0.5s, color 0.5s;
     }
     .highlight {
       background: var(--highlight);
@@ -148,15 +155,14 @@
       padding: 8px 16px;
       user-select: text;
     }
-    #last-updated,
-    #taf-updated {
-      text-align: center;
+    #last-updated, #taf-updated {
       font-size: 14px;
       color: var(--muted);
       margin: 8px 0 24px;
+      text-align: center;
     }
 
-    /* TAF Cards */
+    /* TAF CARDS */
     #compact-taf {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
@@ -192,13 +198,17 @@
 <body>
 
   <!-- Bonaire Visibility Widget -->
-  <div id="bonaire-vis-widget" aria-live="polite" title="Double-click to refresh">
+  <div
+    class="weather-widget"
+    id="bonaire-vis-widget"
+    aria-live="polite"
+    title="Double-click to refresh">
     <h2>👁️ Bonaire Visibility</h2>
     <div class="vis-value" id="vis-value">Loading…</div>
     <div class="timestamp" id="vis-timestamp"></div>
   </div>
 
-  <!-- Main Title & Controls -->
+  <!-- Main Title and Controls -->
   <h1>CAR/VEN METAR AND TAF</h1>
 
   <div id="clocks">
@@ -212,19 +222,12 @@
     <button id="test-btn">Enter Test Mode</button>
   </div>
 
-  <!-- METAR Table -->
   <div class="table-wrapper">
     <table>
       <thead>
         <tr>
-          <th>ICAO</th>
-          <th>Time</th>
-          <th>Wind</th>
-          <th>Vis</th>
-          <th>Wx</th>
-          <th>Clouds</th>
-          <th>Temp/Dew</th>
-          <th>QNH</th>
+          <th>ICAO</th><th>Time</th><th>Wind</th><th>Vis</th>
+          <th>Wx</th><th>Clouds</th><th>Temp/Dew</th><th>QNH</th>
         </tr>
       </thead>
       <tbody id="metar"></tbody>
@@ -232,7 +235,6 @@
   </div>
   <div id="last-updated">METAR last updated: --:--:--</div>
 
-  <!-- TAF Cards -->
   <div id="compact-taf"><div>Loading TAF…</div></div>
   <div id="taf-updated">TAF last updated: --:--:--</div>
 
@@ -282,24 +284,24 @@
 
     function parseMetar(raw){
       const tks = cleanForParse(raw).split(/\s+/);
-      const time = tks[1]||'';
+      const time = tks[1] || '';
       const mainWind = tks.find(x=>/^(?:VRB|\d{3})\d{2}(?:G\d{2})?KT$/.test(x)||/^\/{5}KT$/.test(x))||'';
       const varWind = tks.filter(x=>/^\d{3}V\d{3}$/.test(x)).join(' ');
-      const wind    = [mainWind,varWind].filter(Boolean).join(' ');
-      const gustVal = +(mainWind.match(/G(\d{2})/)?.[1]||0);
-      const hasGust = gustVal>0;
-      const vis     = tks.find(x=>/^\d{4}$/.test(x))||'';
-      const visNum  = parseInt(vis,10)||9999;
-      const lowVis  = visNum<5000;
-      const wx      = tks.filter(x=>
+      const wind = [mainWind,varWind].filter(Boolean).join(' ');
+      const gustVal = +(mainWind.match(/G(\d{2})/)?.[1] || 0);
+      const hasGust = gustVal > 0;
+      const vis = tks.find(x=>/^\d{4}$/.test(x))||'';
+      const visNum = parseInt(vis,10)||9999;
+      const lowVis = visNum < 5000;
+      const wx = tks.filter(x=>
         /^(?:\+|-)?(?:VC)?(?:MI|PR|BC|DR|BL|SH|TS|FZ)?(?:DZ|RA|SN|SG|PL|GR|GS|UP|BR|FG|FU|DU|SA|HZ|PY|PO|SQ|FC|SS|DS|VA)$/.test(x)||x==='VCSH'
       ).join(' ');
-      const hasWx   = !!wx;
-      const clouds  = tks.filter(x=>/^(?:FEW|SCT|BKN|OVC).*/.test(x)).join(' ');
-      const hasCB   = /TCU|CB/.test(clouds);
-      const td      = tks.find(x=>/^M?\d{2}\/M?\d{2}$/.test(x))||'';
-      const qp      = tks.find(x=>/^Q\d{4}$/.test(x));
-      const qnh     = qp?`${qp.slice(1)}-${(parseInt(qp.slice(1),10)*0.02953).toFixed(2)}`:'—';
+      const hasWx = !!wx;
+      const clouds = tks.filter(x=>/^(?:FEW|SCT|BKN|OVC).*/.test(x)).join(' ');
+      const hasCB = /TCU|CB/.test(clouds);
+      const td = tks.find(x=>/^M?\d{2}\/M?\d{2}$/.test(x))||'';
+      const qp = tks.find(x=>/^Q\d{4}$/.test(x));
+      const qnh = qp ? `${qp.slice(1)}-${(parseInt(qp.slice(1),10)*0.02953).toFixed(2)}` : '—';
       return {time,wind,vis,wx,clouds,td,qnh,hasGust,gustVal,lowVis,hasWx,hasCB};
     }
 
@@ -313,11 +315,12 @@
       const frag = document.createDocumentFragment();
       for(const c of stations){
         const tr = document.createElement('tr');
-        tr.innerHTML =
-          `<td class="station"></td>
-           <td class="time">--</td>
-           <td>--</td><td>--</td><td>--</td>
-           <td>--</td><td>--</td><td>--</td>`;
+        tr.innerHTML = `
+          <td class="station"></td>
+          <td class="time">--</td>
+          <td>--</td><td>--</td><td>--</td>
+          <td>--</td><td>--</td><td>--</td>
+        `;
         const trRaw = document.createElement('tr');
         trRaw.className = 'raw';
         trRaw.innerHTML = `<td colspan="8">Waiting for METAR…</td>`;
@@ -325,16 +328,11 @@
         frag.appendChild(trRaw);
         const cells = tr.querySelectorAll('td');
         rows[c] = {
-          row: tr,
-          rawRow: trRaw,
-          cStation: cells[0],
-          cTime: cells[1],
-          cWind: cells[2],
-          cVis: cells[3],
-          cWx: cells[4],
-          cClouds: cells[5],
-          cTd: cells[6],
-          cQnh: cells[7],
+          row: tr, rawRow: trRaw,
+          cStation: cells[0], cTime: cells[1],
+          cWind: cells[2], cVis: cells[3],
+          cWx: cells[4], cClouds: cells[5],
+          cTd: cells[6], cQnh: cells[7],
           cRaw: trRaw.firstElementChild
         };
         rows[c].cStation.textContent = c;
@@ -343,64 +341,53 @@
       metarTbody.appendChild(frag);
     }
 
-    function applyStationRender(c, parsed, raw, highlightFor15Min){
-      const r = rows[c];
-      if(!r) return;
-
-      // alert styling
+    function applyStationRender(c, parsed, raw, isNewTime){
+      const r = rows[c]; if(!r) return;
       const hasAlert = parsed.hasGust || parsed.lowVis || parsed.hasWx || parsed.hasCB;
       r.cStation.classList.toggle('alert', hasAlert);
-
-      // time cell plus highlight logic
       r.cTime.textContent = parsed.time || '--';
-      if (highlightFor15Min) {
-        r.cTime.classList.add('highlight');
-        setTimeout(() => {
-          r.cTime.classList.remove('highlight');
-        }, 15 * 60 * 1000);
-      }
-
-      // fill other columns
-      r.cWind.textContent    = parsed.wind   || '--';
-      r.cVis.textContent     = parsed.vis    || '--';
-      r.cWx.textContent      = parsed.wx     || '--';
-      r.cClouds.textContent  = parsed.clouds || '--';
-      r.cTd.textContent      = parsed.td     || '--';
-      r.cQnh.textContent     = parsed.qnh    || '--';
-
-      // raw METAR text
-      r.cRaw.textContent = raw || r.cRaw.textContent;
+      r.cTime.classList.toggle('highlight', !!isNewTime);
+      r.cWind.textContent   = parsed.wind   || '--';
+      r.cVis.textContent    = parsed.vis    || '--';
+      r.cWx.textContent     = parsed.wx     || '--';
+      r.cClouds.textContent = parsed.clouds || '--';
+      r.cTd.textContent     = parsed.td     || '--';
+      r.cQnh.textContent    = parsed.qnh    || '--';
+      r.cRaw.textContent    = raw || r.cRaw.textContent;
     }
 
     async function loadMetar(){
       for(const c of stations){
         try {
-          let raw;
           if(testMode){
-            raw = `${c} 121200Z 09025G36KT 5000 2000N VCSH +TSRA FEW///CB BKN016TCU Q1012 RMK TEST`;
-          } else {
-            const txt = await fetchText(
-              `https://tgftp.nws.noaa.gov/data/observations/metar/stations/${c}.TXT`
-            );
-            raw = txt.trim().split(/\r?\n/).pop();
+            const raw = `${c} 121200Z 09025G36KT 5000 2000N VCSH +TSRA FEW///CB BKN016TCU Q1012 RMK TEST`;
+            const parsed = parseMetar(raw);
+            const prev = state[c]?.timeToken;
+            const isNew = prev && prev!==parsed.time;
+            if(c==='TNCA' && beepEnabled && (parsed.gustVal>=35||/TS/.test(parsed.wx))){
+              new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg').play();
+            }
+            if(isNew && beepEnabled){
+              new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
+            }
+            state[c] = {raw,parsed,timeToken:parsed.time};
+            applyStationRender(c, parsed, raw, true);
+            continue;
           }
-
-          const parsed = parseMetar(raw);
-          const prev   = state[c]?.timeToken;
-          // same or newer time?  
-          const highlightFor15Min = prev && parsed.time >= prev;
-
-          // play beeps on TNCA for gusts or TS
-          if(c==='TNCA' && beepEnabled && (parsed.gustVal >= 35 || /TS/.test(parsed.wx))){
+          const txt   = await fetchText(`https://tgftp.nws.noaa.gov/data/observations/metar/stations/${c}.TXT`);
+          const lines = txt.trim().split(/\r?\n/).filter(Boolean);
+          const raw   = lines.pop();
+          const parsed= parseMetar(raw);
+          const prev  = state[c]?.timeToken;
+          const isNew = prev && prev!==parsed.time;
+          if(c==='TNCA' && beepEnabled && (parsed.gustVal>=35||/TS/.test(parsed.wx))){
             new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg').play();
           }
-          // beep on any refresh
-          if(highlightFor15Min && beepEnabled){
+          if(isNew && beepEnabled){
             new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
           }
-
-          state[c] = { raw, parsed, timeToken: parsed.time };
-          applyStationRender(c, parsed, raw, highlightFor15Min);
+          state[c] = {raw,parsed,timeToken:parsed.time};
+          applyStationRender(c, parsed, raw, isNew);
         } catch {}
       }
       lastUp.textContent = `METAR last updated: ${nowStamp()}`;
@@ -409,33 +396,34 @@
     async function loadTaf(){
       try {
         if(testMode){
-          tafDiv.innerHTML = tafs.map(tf=>
-            `<div class="taf-card">
-               <div>
-                 <span class="taf-code">${tf.c}</span>
-                 <span class="taf-issue">121200Z</span>
-               </div>
-               <div class="taf-body">TAF ${tf.c} … TEST</div>
-             </div>`
-          ).join('');
+          const cards = tafs.map(tf=>`
+            <div class="taf-card">
+              <div>
+                <span class="taf-code">${tf.c}</span>
+                <span class="taf-issue">121200Z</span>
+              </div>
+              <div class="taf-body">TAF ${tf.c} 121130Z 1212/1318 09012KT P6SM FEW020 TEMPO 1218/1222 TSRA BKN030CB</div>
+            </div>
+          `).join('');
+          tafDiv.innerHTML = cards;
           tafUp.textContent = `TAF last updated: ${nowStamp()}`;
           return;
         }
         const results = [];
         for(const tf of tafs){
           try {
-            const txt = await fetchText(tf.u);
-            const s   = cleanForParse(txt.replace(/\s+/g,' '));
+            const txt   = await fetchText(tf.u);
+            const s     = cleanForParse(txt.replace(/\s+/g,' '));
             const issue = (s.match(/\b\d{4}Z\b/)||[])[0]||'';
-            results.push(
-              `<div class="taf-card">
-                 <div>
-                   <span class="taf-code">${tf.c}</span>
-                   <span class="taf-issue">${issue}</span>
-                 </div>
-                 <div class="taf-body">${s}</div>
-               </div>`
-            );
+            results.push(`
+              <div class="taf-card">
+                <div>
+                  <span class="taf-code">${tf.c}</span>
+                  <span class="taf-issue">${issue}</span>
+                </div>
+                <div class="taf-body">${s}</div>
+              </div>
+            `);
           } catch {}
         }
         if(results.length){
@@ -445,37 +433,115 @@
       } catch {}
     }
 
-    // copy cell on double-click
     document.querySelector('table').addEventListener('dblclick', e => {
       const td = e.target.closest('td');
-      if(!td || td.parentElement.classList.contains('raw')) return;
+      if(!td||td.parentElement.classList.contains('raw')) return;
       const txt = td.textContent.trim();
       if(!txt) return;
-      navigator.clipboard.writeText(txt).then(() => {
+      navigator.clipboard.writeText(txt).then(()=>{
         td.classList.add('highlight');
-        setTimeout(() => td.classList.remove('highlight'), 500);
+        setTimeout(()=>td.classList.remove('highlight'),500);
       });
     });
 
-    // button events
-    muteBtn.addEventListener('click', () => {
+    muteBtn.addEventListener('click', ()=>{
       beepEnabled = !beepEnabled;
       muteBtn.textContent = beepEnabled ? 'Mute Beep' : 'Unmute Beep';
     });
-    refreshBtn.addEventListener('click', () => { loadMetar(); loadTaf(); });
-    testBtn.addEventListener('click', () => {
+    refreshBtn.addEventListener('click', ()=>{ loadMetar(); loadTaf(); });
+    testBtn.addEventListener('click', ()=>{
       testMode = !testMode;
       testBtn.textContent = testMode ? 'Exit Test Mode' : 'Enter Test Mode';
       loadMetar(); loadTaf();
     });
 
-    // initial load
     buildTableSkeleton();
     await loadMetar();
     await loadTaf();
-    setInterval(loadMetar, 60 * 1000);
-    setInterval(loadTaf, 10 * 60 * 1000);
+    setInterval(loadMetar, 60_000);
+    setInterval(loadTaf, 600_000);
   })();
   </script>
 
--
+  <!-- BONAIRE VISIBILITY SCRIPT -->
+  <script>
+    (function () {
+      const API_URL = 'https://www.knmidc.org/weather/bonaire/?Current';
+      const PROXY = 'https://api.allorigins.win/raw?url=';
+      const CACHE_KEY = 'bonaire-last-vis';
+      const CACHE_TIME_KEY = 'bonaire-last-timestamp';
+      const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+      const ALERT_THRESHOLD = 20000; // meters
+
+      const widget = document.getElementById('bonaire-vis-widget');
+      const visEl = document.getElementById('vis-value');
+      const tsEl = document.getElementById('vis-timestamp');
+
+      function timeAgo(ms) {
+        const delta = Date.now() - ms;
+        const mins = Math.floor(delta / 60000);
+        if (mins < 1) return 'just now';
+        return mins === 1 ? '1 minute ago' : `${mins} minutes ago`;
+      }
+
+      function loadCache() {
+        const vis = localStorage.getItem(CACHE_KEY);
+        const ts = parseInt(localStorage.getItem(CACHE_TIME_KEY), 10);
+        if (vis && ts) updateDisplay(vis, ts, true);
+      }
+
+      function saveCache(vis, ts) {
+        localStorage.setItem(CACHE_KEY, vis);
+        localStorage.setItem(CACHE_TIME_KEY, ts);
+      }
+
+      function updateDisplay(vis, ts, fromCache) {
+        visEl.textContent = vis;
+        visEl.classList.toggle('low', /^\d+$/.test(vis) && +vis < ALERT_THRESHOLD);
+        tsEl.textContent = fromCache
+          ? `Cached ${timeAgo(ts)}`
+          : `Updated at ${new Date(ts).toLocaleTimeString()}`;
+      }
+
+      async function fetchVisibility() {
+        const resp = await fetch(PROXY + encodeURIComponent(API_URL));
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const html = await resp.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        let vis = 'N/A';
+        doc.querySelectorAll('td').forEach(td => {
+          if (/Visibility/i.test(td.textContent)) {
+            const next = td.nextElementSibling;
+            if (next) vis = next.textContent.trim();
+          }
+        });
+        return vis;
+      }
+
+      async function updateWidget(forced = false) {
+        const ts = Date.now();
+        try {
+          const vis = await fetchVisibility();
+          updateDisplay(vis, ts, false);
+          saveCache(vis, ts);
+        } catch {
+          if (!forced) {
+            const cv = localStorage.getItem(CACHE_KEY);
+            const ct = parseInt(localStorage.getItem(CACHE_TIME_KEY), 10);
+            if (cv && ct) updateDisplay(cv, ct, true);
+            else {
+              visEl.textContent = 'Data not available';
+              tsEl.textContent = '';
+            }
+          }
+        }
+      }
+
+      loadCache();
+      updateWidget();
+      setInterval(updateWidget, REFRESH_INTERVAL);
+      widget.addEventListener('dblclick', () => updateWidget(true));
+    })();
+  </script>
+</body>
+</html>
