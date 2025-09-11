@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -32,6 +31,15 @@
       background: var(--bg);
       color: var(--text);
       position: relative;
+    }
+
+    /* Copy flash animation */
+    @keyframes copyFlash {
+      from { background-color: var(--highlight); }
+      to   { background-color: transparent; }
+    }
+    td.copied {
+      animation: copyFlash 0.6s ease-out;
     }
 
     /* Bonaire Visibility */
@@ -121,7 +129,7 @@
       white-space:pre-wrap; word-break:break-word;
     }
 
-    /* TAF Table: horizontal row */
+    /* TAF Table */
     .taf-wrapper { overflow-x:auto; margin-bottom:24px; }
     #taf-table {
       width:100%; border-collapse:collapse;
@@ -135,9 +143,6 @@
     #taf-table th {
       background:#003b5a; color:var(--accent);
       font-weight:700;
-    }
-    #taf-table td.station {
-      width:80px; font-weight:700; color:var(--accent);
     }
     #taf-table td.decoded {
       white-space:pre-wrap; word-break:break-word;
@@ -199,244 +204,276 @@
   <div id="taf-updated">TAF last updated: --:--:--</div>
 
   <script>
-  (async function(){
-    const proxy    = 'https://api.allorigins.win/raw?url=';
-    const stations = ['TNCA','TNCB','TNCC','TNCM','SVMI','SVVA'];
+  (async function() {
+    const proxy       = 'https://api.allorigins.win/raw?url=';
+    const stations    = ['TNCA','TNCB','TNCC','TNCM','SVMI','SVVA'];
     const tafEndpoints = stations.slice(0,3).map(icao => ({
       icao,
       url: `https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/${icao}.TXT`
     }));
 
     let beepEnabled = true, testMode = false;
-    const metarRows = {}, metarHist = {}, highlightTimers = {};
+    const metarRows = {}, metarHist = {};
 
     // Time helpers
-    function pad(n){ return n<10?'0'+n:''+n; }
-    function nowStamp(){
-      const d=new Date();
+    function pad(n){ return n < 10 ? '0'+n : ''+n; }
+    function nowStamp() {
+      const d = new Date();
       return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     }
-    function updateClocks(){
-      const d=new Date();
+    function updateClocks() {
+      const d = new Date();
       document.getElementById('local-clock').textContent =
         `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
       document.getElementById('utc-clock').textContent =
         `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
     }
-    setInterval(updateClocks,500);
+    setInterval(updateClocks, 500);
     updateClocks();
 
-    // Fetch helper
-    async function fetchText(url){
-      const r = await fetch(proxy + encodeURIComponent(url));
-      if(!r.ok) throw new Error('Fetch failed');
-      return r.text();
+    // Fetch text via CORS proxy
+    async function fetchText(url) {
+      const res = await fetch(proxy + encodeURIComponent(url));
+      if (!res.ok) throw new Error('Fetch failed');
+      return res.text();
     }
 
-    // METAR parse
-    function cleanForParse(s){
+    // METAR parsing
+    function cleanForParse(s) {
       return s.replace(/\sRMK[\s\S]*/i,'')
               .replace(/\s(?:TEMPO|BECMG|PROB\d{2}|FM\d{6})[\s\S]*/i,'')
               .replace(/\bAUTO\b|\bCOR\b/gi,'')
               .trim();
     }
-    function parseMetar(raw){
-      const t = cleanForParse(raw).split(/\s+/);
-      const time = t[1]||'--';
-      const wind = t.find(x=>/^(?:VRB|\d{3})\d{2}(?:G\d{2})?KT$/.test(x))||'--';
-      const vis  = t.find(x=>/^\d{4}$/.test(x))||'--';
-      const wx   = t.filter(x=>/^(?:\+|-)?(?:TS|SH|RA|DZ|SN|FG|BR).*/.test(x)).join(' ')||'--';
-      const cld  = t.filter(x=>/^(?:FEW|SCT|BKN|OVC).*/.test(x)).join(' ')||'--';
-      const td   = t.find(x=>/^M?\d{2}\/M?\d{2}$/.test(x))||'--';
+    function parseMetar(raw) {
+      const t    = cleanForParse(raw).split(/\s+/);
+      const time = t[1] || '--';
+      const wind = t.find(x=>/^(?:VRB|\d{3})\d{2}(?:G\d{2})?KT$/.test(x)) || '--';
+      const vis  = t.find(x=>/^\d{4}$/.test(x)) || '--';
+      const wx   = t.filter(x=>/^(?:\+|-)?(?:TS|SH|RA|DZ|SN|FG|BR).*/.test(x)).join(' ') || '--';
+      const cld  = t.filter(x=>/^(?:FEW|SCT|BKN|OVC).*/.test(x)).join(' ') || '--';
+      const td   = t.find(x=>/^M?\d{2}\/M?\d{2}$/.test(x)) || '--';
       const qp   = t.find(x=>/^Q\d{4}$/.test(x));
-      let qnh='—';
-      if(qp){
-        const h=qp.slice(1), i=(parseInt(h)*0.02953).toFixed(2);
-        qnh=`${h}-${i}`;
+      let qnh = '—';
+      if (qp) {
+        const h = qp.slice(1);
+        const i = (parseInt(h) * 0.02953).toFixed(2);
+        qnh = `${h}-${i}`;
       }
-      const gust = +(wind.match(/G(\d{2})/)?.[1]||0);
-      let age=0;
-      if(/^\d{6}Z$/.test(time)){
-        const now=new Date(), dd=parseInt(time.slice(0,2)),
-              hh=parseInt(time.slice(2,4)), mm=parseInt(time.slice(4,6));
-        const d=Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),dd,hh,mm);
-        age=(Date.now()-d)/60000;
+      const gust = +(wind.match(/G(\d{2})/)?.[1] || 0);
+      let age = 0;
+      if (/^\d{6}Z$/.test(time)) {
+        const now = new Date(),
+              dd  = parseInt(time.slice(0,2)),
+              hh  = parseInt(time.slice(2,4)),
+              mm  = parseInt(time.slice(4,6));
+        const dUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), dd, hh, mm);
+        age = (Date.now() - dUTC) / 60000;
       }
-      return {time,wind,vis,wx,cld,td,qnh,gust,age};
+      return { time, wind, vis, wx, cld, td, qnh, gust, age };
     }
 
-    function buildMetar(){
-      const tb=document.getElementById('metar');
-      tb.innerHTML='';
-      stations.forEach(icao=>{
-        const tr=document.createElement('tr'),
-              trR=document.createElement('tr');
-        trR.className='raw';
-        tr.innerHTML=`
+    // Build METAR table rows
+    function buildMetar() {
+      const tb = document.getElementById('metar');
+      tb.innerHTML = '';
+      stations.forEach(icao => {
+        const tr  = document.createElement('tr');
+        const trR = document.createElement('tr');
+        trR.className = 'raw';
+        tr.innerHTML = `
           <td class="station">${icao}</td>
           <td class="time">--</td>
           <td>--</td><td class="vis">--</td>
           <td>--</td><td>--</td>
           <td>--</td><td>--</td>`;
-        trR.innerHTML=`
+        trR.innerHTML = `
           <td colspan="8">
             <span class="raw-current">Waiting…</span>
             <span class="raw-past"></span>
           </td>`;
-        tb.append(tr,trR);
-        metarRows[icao]={
-          row: tr,
+        tb.append(tr, trR);
+        metarRows[icao] = {
+          row:  tr,
           curr: trR.querySelector('.raw-current'),
           past: trR.querySelector('.raw-past')
         };
-        metarHist[icao]=[];
+        metarHist[icao] = [];
       });
     }
 
-    function scheduleHighlight(icao,cell){
+    function scheduleHighlight(cell) {
       clearTimeout(cell._t);
       cell.classList.add('highlight');
-      cell._t=setTimeout(()=>cell.classList.remove('highlight'),20*60*1000);
+      cell._t = setTimeout(() => cell.classList.remove('highlight'), 20 * 60 * 1000);
     }
 
-    async function loadMetar(){
-      for(const icao of stations){
-        try{
+    // Load & render METAR data
+    async function loadMetar() {
+      for (const icao of stations) {
+        try {
           const txt = testMode
-            ?`${icao} 121900Z AUTO COR 09025G35KT 5000 VCSH FEW020 BKN040 28/24 Q1013`
-            :await fetchText(
-               `https://tgftp.nws.noaa.gov/data/observations/metar/stations/${icao}.TXT`
-            );
-          const raw=txt.trim().split(/\r?\n/).pop();
-          const d=parseMetar(raw);
-          const hist=metarHist[icao];
-          const isNew=hist[0]&&hist[0]!==raw;
-          if(!hist.length||hist[0]!==raw){
-            hist.unshift(raw);
-            if(hist.length>2) hist.pop();
+            ? `${icao} 121900Z AUTO COR 09025G35KT 5000 VCSH FEW020 BKN040 28/24 Q1013`
+            : await fetchText(`https://tgftp.nws.noaa.gov/data/observations/metar/stations/${icao}.TXT`);
+          const rawLine = txt.trim().split(/\r?\n/).pop();
+          const d       = parseMetar(rawLine);
+          const hist    = metarHist[icao];
+          const isNew   = hist[0] && hist[0] !== rawLine;
+          if (!hist[0] || hist[0] !== rawLine) {
+            hist.unshift(rawLine);
+            if (hist.length > 2) hist.pop();
           }
-          if(icao==='TNCA'&&beepEnabled&&(d.gust>=35||/TS/.test(d.wx))){
+          // audio alerts
+          if (icao === 'TNCA' && beepEnabled && (d.gust >= 35 || /TS/.test(d.wx))) {
             new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg').play();
           }
-          if(isNew&&beepEnabled){
+          if (isNew && beepEnabled) {
             new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
           }
-          const r=metarRows[icao];
-          // styling
-          const alertCond = d.gust>0 || parseInt(d.vis)<5000 || d.wx!=='--' || /CB/.test(d.cld);
-          r.row.classList.toggle('stale',d.age>120);
-          r.row.classList.toggle('alert-row',alertCond);
-          r.row.querySelector('.station').classList.toggle('alert',alertCond);
-          // cells
-          const c=r.row.querySelectorAll('td');
-          c[1].textContent=d.time; if(isNew) scheduleHighlight(icao,c[1]);
-          c[2].textContent=d.wind; c[3].textContent=d.vis;
-          c[4].textContent=d.wx;   c[5].textContent=d.cld;
-          c[6].textContent=d.td;   c[7].textContent=d.qnh;
-          // raw
-          r.curr.textContent=hist[0]||'';
-          r.past.textContent=hist[1]||'';
-        }catch{}
+          // render
+          const r = metarRows[icao];
+          const alertCond = d.gust > 0 ||
+                            parseInt(d.vis,10) < 5000 ||
+                            d.wx !== '--' ||
+                            /CB/.test(d.cld);
+          r.row.classList.toggle('stale', d.age > 120);
+          r.row.classList.toggle('alert-row', alertCond);
+          r.row.querySelector('.station').classList.toggle('alert', alertCond);
+          const cells = r.row.querySelectorAll('td');
+          cells[1].textContent = d.time;       if (isNew) scheduleHighlight(cells[1]);
+          cells[2].textContent = d.wind;
+          cells[3].textContent = d.vis;
+          cells[4].textContent = d.wx;
+          cells[5].textContent = d.cld;
+          cells[6].textContent = d.td;
+          cells[7].textContent = d.qnh;
+          r.curr.textContent = hist[0] || '';
+          r.past.textContent = hist[1] || '';
+        } catch (err) {
+          console.error('METAR load error for', icao, err);
+        }
       }
-      document.getElementById('last-updated').textContent=
+      document.getElementById('last-updated').textContent =
         `METAR last updated: ${nowStamp()}`;
     }
 
-    // TAF decode
-    function decodeTaf(raw){
-      const out=[];
-      const issue=(raw.match(/\b\d{6}Z\b/)||[])[0];
-      if(issue) out.push('Issued '+issue);
-      const range=(raw.match(/\b(\d{4})\/(\d{4})\b/)||[]).slice(1);
-      if(range.length===2) out.push(`Valid ${range[0]}–${range[1]}Z`);
-      const parts=raw.split(/(?=FM\d{6}|TEMPO|BECMG|PROB\d{2})/);
-      parts.forEach(p=>{
-        const k=p.match(/^(FM\d{6}|TEMPO|BECMG|PROB\d{2})/);
-        let label=k? k[1].startsWith('FM')
-          ? `From ${k[1].slice(2,4)}:${k[1].slice(4,6)}Z`
-          : k[1]
-          : '';
-        const w=p.match(/(\d{3})(\d{2})G?(\d{2})?KT/);
-        if(w) out.push(`${label} wind ${w[1]}°@${w[2]}kt${w[3]?'G'+w[3]+'kt':''}`);
-        const v=p.match(/ (\d{4}) /);
-        if(v) out.push(`${label} vis ${v[1]}m`);
-        const c=p.match(/(FEW|SCT|BKN|OVC)(\d{3})/);
-        if(c){
-          const d={FEW:'Few',SCT:'Scat',BKN:'Brk',OVC:'Ovc'}[c[1]];
-          out.push(`${label} ${d} ${c[2]}00ft`);
+    // Decode and render TAF data
+    function decodeTaf(raw) {
+      const out   = [];
+      const issue = raw.match(/\b\d{6}Z\b/)?.[0];
+      if (issue) out.push('Issued ' + issue);
+      const range = raw.match(/\b(\d{4})\/(\d{4})\b/)?.slice(1) || [];
+      if (range.length === 2) out.push(`Valid ${range[0]}–${range[1]}Z`);
+      const parts = raw.split(/(?=FM\d{6}|TEMPO|BECMG|PROB\d{2})/);
+      parts.forEach(p => {
+        const tag = p.match(/^(FM\d{6}|TEMPO|BECMG|PROB\d{2})/)?.[1] || '';
+        let label = '';
+        if (tag.startsWith('FM')) {
+          label = `From ${tag.slice(2,4)}:${tag.slice(4,6)}Z`;
+        } else if (tag) {
+          label = tag;
+        }
+        const w = p.match(/(\d{3})(\d{2})G?(\d{2})?KT/);
+        if (w) {
+          out.push(`${label} wind ${w[1]}°@${w[2]}kt${w[3]? 'G'+w[3]+'kt':''}`);
+        }
+        const v = p.match(/ (\d{4}) /);
+        if (v) out.push(`${label} vis ${v[1]}m`);
+        const c = p.match(/(FEW|SCT|BKN|OVC)(\d{3})/);
+        if (c) {
+          const map = { FEW:'Few', SCT:'Scat', BKN:'Brk', OVC:'Ovc' };
+          out.push(`${label} ${map[c[1]]} ${c[2]}00ft`);
         }
       });
       return out.join('<br/>');
     }
 
-    async function loadTaf(){
-      const hdr=document.getElementById('taf-header');
-      const row=document.getElementById('taf-row');
-      hdr.innerHTML = tafEndpoints.map(tf=>`<th>${tf.icao}</th>`).join('');
-      const decoded=await Promise.all(tafEndpoints.map(async tf=>{
-        let raw='';
-        try{
-          raw=await fetchText(tf.url);
-          raw=raw.trim().replace(/\r?\n/g,' ');
-        }catch{}
-        return decodeTaf(raw);
+    async function loadTaf() {
+      const hdr = document.getElementById('taf-header');
+      const row = document.getElementById('taf-row');
+      hdr.innerHTML = tafEndpoints.map(t => `<th>${t.icao}</th>`).join('');
+      const decoded = await Promise.all(tafEndpoints.map(async t => {
+        try {
+          let raw = await fetchText(t.url);
+          raw = raw.trim().replace(/\r?\n/g,' ');
+          return decodeTaf(raw);
+        } catch {
+          return 'N/A';
+        }
       }));
-      row.innerHTML = decoded.map(d=>`<td class="decoded">${d}</td>`).join('');
-      document.getElementById('taf-updated').textContent=
+      row.innerHTML = decoded.map(d => `<td class="decoded">${d}</td>`).join('');
+      document.getElementById('taf-updated').textContent =
         `TAF last updated: ${nowStamp()}`;
     }
 
-    // init
-    buildMetar();
-    loadMetar();
-    loadTaf();
-    setInterval(loadMetar,60*1000);
-    setInterval(loadTaf,10*60*1000);
-
-    // controls
-    document.getElementById('mute-btn').onclick=()=>{
-      beepEnabled=!beepEnabled;
-      document.getElementById('mute-btn').textContent=
-        beepEnabled?'Mute Beep':'Unmute Beep';
-    };
-    document.getElementById('refresh-btn').onclick=()=>{
-      loadMetar(); loadTaf();
-    };
-    document.getElementById('test-btn').onclick=()=>{
-      testMode=!testMode;
-      document.getElementById('test-btn').textContent=
-        testMode?'Exit Test Mode':'Enter Test Mode';
-      loadMetar(); loadTaf();
-    };
-
-    // Bonaire visibility
+    // Bonaire visibility widget
     (function(){
-      const URL='https://www.knmidc.org/weather/bonaire/?Current',
-            REF=5*60*1000, ALERT=20000,
-            visEl=document.getElementById('vis-value'),
-            tsEl=document.getElementById('vis-timestamp'),
-            wd=document.getElementById('bonaire-vis-widget');
-      async function upd(force=false){
-        let v='N/A', t=Date.now();
-        try{
-          const res=await fetch(proxy+encodeURIComponent(URL));
-          const html=await res.text();
-          const doc=new DOMParser().parseFromString(html,'text/html');
+      const URL = 'https://www.knmidc.org/weather/bonaire/?Current';
+      const REF = 5 * 60 * 1000;
+      const ALERT = 20000;
+      const visEl = document.getElementById('vis-value');
+      const tsEl  = document.getElementById('vis-timestamp');
+      const wd    = document.getElementById('bonaire-vis-widget');
+      async function upd() {
+        let v = 'N/A', t = Date.now();
+        try {
+          const html = await fetch(proxy + encodeURIComponent(URL)).then(r=>r.text());
+          const doc  = new DOMParser().parseFromString(html,'text/html');
           doc.querySelectorAll('td').forEach(td=>{
-            if(/Visibility/i.test(td.textContent)){
-              const nxt=td.nextElementSibling;
-              if(nxt) v=nxt.textContent.trim();
+            if (/Visibility/i.test(td.textContent)) {
+              const nxt = td.nextElementSibling;
+              if (nxt) v = nxt.textContent.trim();
             }
           });
-        }catch{}
-        visEl.textContent=v;
-        visEl.classList.toggle('low',parseInt(v,10)<ALERT);
-        tsEl.textContent=`Updated ${new Date(t).toLocaleTimeString()}`;
+        } catch(e) {
+          console.error('Visibility load error', e);
+        }
+        visEl.textContent = v;
+        visEl.classList.toggle('low', parseInt(v,10) < ALERT);
+        tsEl.textContent  = `Updated ${new Date(t).toLocaleTimeString()}`;
       }
-      wd.ondblclick=()=>upd(true);
+      wd.ondblclick = upd;
       upd();
-      setInterval(upd,REF);
+      setInterval(upd, REF);
     })();
+
+    // Initialize
+    buildMetar();
+    await loadMetar();
+    await loadTaf();
+    setInterval(loadMetar, 60*1000);
+    setInterval(loadTaf, 10*60*1000);
+
+    // Controls
+    document.getElementById('mute-btn').onclick = () => {
+      beepEnabled = !beepEnabled;
+      document.getElementById('mute-btn').textContent =
+        beepEnabled ? 'Mute Beep' : 'Unmute Beep';
+    };
+    document.getElementById('refresh-btn').onclick = () => {
+      loadMetar();
+      loadTaf();
+    };
+    document.getElementById('test-btn').onclick = () => {
+      testMode = !testMode;
+      document.getElementById('test-btn').textContent =
+        testMode ? 'Exit Test Mode' : 'Enter Test Mode';
+      loadMetar();
+      loadTaf();
+    };
+
+    // Enable double-click copy on all <td>
+    document.body.addEventListener('dblclick', async e => {
+      const td = e.target.closest('td');
+      if (!td) return;
+      const txt = td.textContent.trim();
+      try {
+        await navigator.clipboard.writeText(txt);
+        td.classList.add('copied');
+        setTimeout(() => td.classList.remove('copied'), 600);
+      } catch {}
+    });
+
   })();
   </script>
 </body>
