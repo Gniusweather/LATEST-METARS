@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>CAR/VEN METAR &amp; TAF + Bonaire Visibility</title>
+  <title>CAR/VEN METAR &amp; TAF + Bonaire Visibility + SYNOP</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
 
   <!-- Google Fonts -->
@@ -21,7 +21,7 @@
       --accent:    #66ffcc;
       --text:      #f2f7fa;
       --muted:     #4f5b62;
-      --warn:      #ff6666;
+      --warn:      #ff0000;
       --highlight: var(--accent);
     }
     *, *::before, *::after { box-sizing: border-box }
@@ -33,23 +33,26 @@
       position: relative;
     }
 
-    /* Copy flash animation */
+    /* Copy-flash for METAR only */
     @keyframes copyFlash {
       from { background-color: var(--highlight); }
       to   { background-color: transparent; }
     }
-    td.copied {
+    td.metar-copied {
       animation: copyFlash 0.6s ease-out;
+    }
+
+    /* Per-cell alert = only a thick red border */
+    td.alert {
+      border: 3px solid var(--warn) !important;
     }
 
     /* Bonaire Visibility */
     #bonaire-vis-widget {
       position: absolute; top:24px; left:24px;
-      width:260px;
-      background: var(--panel);
+      width:260px; background: var(--panel);
       border:2px solid var(--line);
-      border-radius:8px;
-      padding:16px;
+      border-radius:8px; padding:16px;
       cursor:pointer;
     }
     #bonaire-vis-widget h2 {
@@ -67,8 +70,10 @@
     }
 
     /* Header & Controls */
-    h1 { text-align:center; margin-top:0;
-         font-size:32px; font-weight:800; color:var(--accent); }
+    h1 {
+      text-align:center; margin-top:0;
+      font-size:32px; font-weight:800; color:var(--accent);
+    }
     #clocks {
       display:flex; justify-content:center; gap:40px;
       font-size:36px; margin:16px 0 24px;
@@ -84,7 +89,7 @@
       background:var(--accent); color:var(--panel);
     }
 
-    /* METAR Table */
+    /* Tables */
     .table-wrapper { overflow-x:auto; margin-bottom:16px; }
     table {
       width:100%; border-collapse:collapse;
@@ -99,58 +104,45 @@
       background:#003b5a; color:var(--accent);
       font-weight:700;
     }
-    td.station {
-      font-weight:700; color:var(--accent);
-      font-size:36px;
-    }
-    td.time { font-size:32px; transition:.5s; }
-    td.vis  { font-size:28px; }
     tr.stale { opacity:.5; }
-    td.time.stale { opacity:.5; color:var(--muted)!important; }
-    .alert { background:var(--warn); color:var(--bg); }
-    .highlight { background:var(--highlight); color:var(--bg); }
-    tr.alert-row td { border:2px solid var(--warn)!important; }
 
-    /* Raw METAR row */
+    /* METAR columns */
+    td.station { font-weight:700; color:var(--accent); font-size:36px; }
+    td.time    { font-size:32px; }
+    td.vis     { font-size:28px; }
+
     tr.raw td {
-      background:var(--panel);
-      padding:12px 16px; text-align:left;
-      user-select:text;
+      background:var(--panel); text-align:left;
+      padding:12px 16px; user-select:text;
     }
     .raw-current {
-      display:block; font-family:monospace;
-      font-size:20px; color:#d0d7de;
-      white-space:pre-wrap; word-break:break-word;
+      display:block; font-family:monospace; font-size:20px;
+      color:#d0d7de; white-space:pre-wrap; word-break:break-word;
     }
     .raw-past {
       display:block; margin-top:4px;
       font-family:monospace; font-size:18px;
-      color:var(--muted);
-      white-space:pre-wrap; word-break:break-word;
+      color:var(--muted); white-space:pre-wrap; word-break:break-word;
     }
 
-    /* TAF Table */
-    .taf-wrapper { overflow-x:auto; margin-bottom:24px; }
-    #taf-table {
-      width:100%; border-collapse:collapse;
-      font-family:monospace; font-size:18px;
+    /* TAF & SYNOP */
+    #taf-table, #synop-table {
+      font-size:18px; margin-bottom:24px;
+      border-collapse:collapse; width:100%;
     }
-    #taf-table th, #taf-table td {
+    #taf-table th, #taf-table td,
+    #synop-table th, #synop-table td {
       border:2px solid var(--line);
-      padding:12px 16px; text-align:left;
-      vertical-align:top;
+      padding:8px 12px; text-align:left;
+      font-family:monospace; user-select:none;
     }
-    #taf-table th {
+    #taf-table th, #synop-table th {
       background:#003b5a; color:var(--accent);
       font-weight:700;
     }
-    #taf-table td.decoded {
-      white-space:pre-wrap; word-break:break-word;
-    }
-
-    #last-updated, #taf-updated {
-      text-align:center; font-size:14px;
-      color:var(--muted); margin:8px 0 24px;
+    #taf-table td.station, #synop-table td.station {
+      font-weight:700; color:var(--accent);
+      text-align:center; font-size:20px;
     }
   </style>
 </head>
@@ -193,289 +185,300 @@
   <div id="last-updated">METAR last updated: --:--:--</div>
 
   <!-- TAF Table -->
-  <div class="taf-wrapper">
+  <div class="table-wrapper">
     <table id="taf-table">
-      <thead><tr id="taf-header"></tr></thead>
-      <tbody>
-        <tr id="taf-row"></tr>
-      </tbody>
+      <thead><tr><th>ICAO</th><th>Raw TAF</th></tr></thead>
+      <tbody id="taf"></tbody>
     </table>
   </div>
   <div id="taf-updated">TAF last updated: --:--:--</div>
 
+  <!-- SYNOP Table -->
+  <div class="table-wrapper">
+    <table id="synop-table">
+      <thead><tr><th>ICAO</th><th>Raw SYNOP</th></tr></thead>
+      <tbody id="synop"></tbody>
+    </table>
+  </div>
+
   <script>
-  (async function() {
-    const proxy       = 'https://api.allorigins.win/raw?url=';
-    const stations    = ['TNCA','TNCB','TNCC','TNCM','SVMI','SVVA'];
-    const tafEndpoints = stations.slice(0,3).map(icao => ({
+  (async function(){
+    const proxy    = 'https://api.allorigins.win/raw?url=';
+    const stations = ['TNCA','TNCB','TNCC','TNCM','SVMI','SVVA'];
+    const tafEnds  = stations.slice(0,3).map(icao=>({
       icao,
-      url: `https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/${icao}.TXT`
+      url:`https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/${icao}.TXT`
     }));
+    const synopEnds = [
+      {icao:'TNCC', url:'https://tgftp.nws.noaa.gov/data/raw/si/sica20.tncc..txt'},
+      {icao:'TNCC', url:'https://tgftp.nws.noaa.gov/data/raw/sm/smca01.tncc..txt'}
+    ];
 
     let beepEnabled = true, testMode = false;
     const metarRows = {}, metarHist = {};
+    const tafCells  = {};
+    const synopCells= [];
 
-    // Time helpers
-    function pad(n){ return n < 10 ? '0'+n : ''+n; }
-    function nowStamp() {
-      const d = new Date();
+    function pad(n){ return n<10?'0'+n:''+n; }
+    function nowStamp(){
+      const d=new Date();
       return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     }
-    function updateClocks() {
-      const d = new Date();
-      document.getElementById('local-clock').textContent =
-        `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    function updateClocks(){
+      const d=new Date();
+      document.getElementById('local-clock').textContent = nowStamp();
       document.getElementById('utc-clock').textContent =
         `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
     }
-    setInterval(updateClocks, 500);
+    setInterval(updateClocks,500);
     updateClocks();
 
-    // Fetch text via CORS proxy
-    async function fetchText(url) {
-      const res = await fetch(proxy + encodeURIComponent(url));
-      if (!res.ok) throw new Error('Fetch failed');
-      return res.text();
+    async function fetchText(url){
+      const r = await fetch(proxy + encodeURIComponent(url));
+      if(!r.ok) throw new Error('Fetch failed '+r.status);
+      return r.text();
     }
 
-    // METAR parsing
-    function cleanForParse(s) {
+    function cleanForParse(s){
       return s.replace(/\sRMK[\s\S]*/i,'')
               .replace(/\s(?:TEMPO|BECMG|PROB\d{2}|FM\d{6})[\s\S]*/i,'')
-              .replace(/\bAUTO\b|\bCOR\b/gi,'')
-              .trim();
+              .replace(/\bAUTO\b|\bCOR\b/gi,'').trim();
     }
-    function parseMetar(raw) {
-      const t    = cleanForParse(raw).split(/\s+/);
-      const time = t[1] || '--';
-      const wind = t.find(x=>/^(?:VRB|\d{3})\d{2}(?:G\d{2})?KT$/.test(x)) || '--';
-      const vis  = t.find(x=>/^\d{4}$/.test(x)) || '--';
-      const wx   = t.filter(x=>/^(?:\+|-)?(?:TS|SH|RA|DZ|SN|FG|BR).*/.test(x)).join(' ') || '--';
-      const cld  = t.filter(x=>/^(?:FEW|SCT|BKN|OVC).*/.test(x)).join(' ') || '--';
-      const td   = t.find(x=>/^M?\d{2}\/M?\d{2}$/.test(x)) || '--';
-      const qp   = t.find(x=>/^Q\d{4}$/.test(x));
-      let qnh = '—';
-      if (qp) {
-        const h = qp.slice(1);
-        const i = (parseInt(h) * 0.02953).toFixed(2);
-        qnh = `${h}-${i}`;
+    function parseMetar(raw){
+      const t = cleanForParse(raw).split(/\s+/);
+      const time     = t[1]||'--';
+      const baseWind = t.find(x=>/^(?:VRB|\d{3})\d{2}(?:G\d{2})?KT$/.test(x))||'/////KT';
+      const varGrp   = t.find(x=>/^\d{3}V\d{3}$/.test(x));
+      const wind     = baseWind + (varGrp? ' '+varGrp : '');
+      const vis      = t.find(x=>/^\d{4}$/.test(x))||'--';  
+      const wx       = t.filter(x=>/^(?:\+|-)?(?:VC)?(?:TS|SH|RA|DZ|SN|FG|BR)/.test(x)).join(' ')||'--';  
+      const cld      = t.filter(x=>/^(?:FEW|SCT|BKN|OVC)/.test(x)).join(' ')||'--';  
+      const td       = t.find(x=>/^M?\d{2}\/M?\d{2}$/.test(x))||'--';  
+      const qp       = t.find(x=>/^Q\d{4}$/.test(x));  
+      let qnh='—';  
+      if(qp){
+        const h=qp.slice(1), i=(parseInt(h)*0.02953).toFixed(2);
+        qnh=`${h} - ${i}`;
       }
-      const gust = +(wind.match(/G(\d{2})/)?.[1] || 0);
-      let age = 0;
-      if (/^\d{6}Z$/.test(time)) {
-        const now = new Date(),
-              dd  = parseInt(time.slice(0,2)),
-              hh  = parseInt(time.slice(2,4)),
-              mm  = parseInt(time.slice(4,6));
-        const dUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), dd, hh, mm);
-        age = (Date.now() - dUTC) / 60000;
+      const gust=+(baseWind.match(/G(\d{2})/)?.[1]||0);
+      let age=0;
+      if(/^\d{6}Z$/.test(time)){
+        const now=new Date(),
+              dd=parseInt(time.slice(0,2)),
+              hh=parseInt(time.slice(2,4)),
+              mm=parseInt(time.slice(4,6));
+        const then=Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),dd,hh,mm);
+        age=(Date.now()-then)/60000;
       }
-      return { time, wind, vis, wx, cld, td, qnh, gust, age };
+      return {time,wind,vis,wx,cld,td,qnh,gust,age};
     }
 
-    // Build METAR table rows
-    function buildMetar() {
-      const tb = document.getElementById('metar');
-      tb.innerHTML = '';
-      stations.forEach(icao => {
-        const tr  = document.createElement('tr');
-        const trR = document.createElement('tr');
-        trR.className = 'raw';
-        tr.innerHTML = `
+    function buildMetar(){
+      const tb=document.getElementById('metar');
+      tb.innerHTML='';
+      stations.forEach(icao=>{
+        const tr=document.createElement('tr'),
+              trR=document.createElement('tr');
+        trR.className='raw';
+        tr.innerHTML=`
           <td class="station">${icao}</td>
           <td class="time">--</td>
           <td>--</td><td class="vis">--</td>
           <td>--</td><td>--</td>
           <td>--</td><td>--</td>`;
-        trR.innerHTML = `
+        trR.innerHTML=`
           <td colspan="8">
             <span class="raw-current">Waiting…</span>
             <span class="raw-past"></span>
           </td>`;
-        tb.append(tr, trR);
+        tb.append(tr,trR);
         metarRows[icao] = {
-          row:  tr,
+          row : tr,
           curr: trR.querySelector('.raw-current'),
           past: trR.querySelector('.raw-past')
         };
-        metarHist[icao] = [];
+        metarHist[icao]=[];
       });
     }
 
-    function scheduleHighlight(cell) {
+    function scheduleHighlight(cell){
       clearTimeout(cell._t);
       cell.classList.add('highlight');
-      cell._t = setTimeout(() => cell.classList.remove('highlight'), 20 * 60 * 1000);
+      cell._t=setTimeout(()=>cell.classList.remove('highlight'),20*60*1000);
     }
 
-    // Load & render METAR data
-    async function loadMetar() {
-      for (const icao of stations) {
-        try {
+    async function loadMetar(){
+      const tb=document.getElementById('metar');
+      stations.forEach((icao,i)=>{
+        const row = tb.children[i*2]; // even rows
+        const c   = row.querySelectorAll('td');
+        // clear old alerts
+        [0,2,3,4,5].forEach(idx=>c[idx].classList.remove('alert'));
+      });
+
+      for(const icao of stations){
+        try{
           const txt = testMode
             ? `${icao} 121900Z AUTO COR 09025G35KT 5000 VCSH FEW020 BKN040 28/24 Q1013`
-            : await fetchText(`https://tgftp.nws.noaa.gov/data/observations/metar/stations/${icao}.TXT`);
-          const rawLine = txt.trim().split(/\r?\n/).pop();
-          const d       = parseMetar(rawLine);
-          const hist    = metarHist[icao];
-          const isNew   = hist[0] && hist[0] !== rawLine;
-          if (!hist[0] || hist[0] !== rawLine) {
-            hist.unshift(rawLine);
-            if (hist.length > 2) hist.pop();
+            : await fetchText(
+                `https://tgftp.nws.noaa.gov/data/observations/metar/stations/${icao}.TXT`
+              );
+          const raw=txt.trim().split(/\r?\n/).pop();
+          const d=parseMetar(raw);
+          const hist=metarHist[icao];
+          const isNew=hist[0]&&hist[0]!==raw;
+          if(!hist[0]||hist[0]!==raw){
+            hist.unshift(raw); if(hist.length>2) hist.pop();
           }
-          // audio alerts
-          if (icao === 'TNCA' && beepEnabled && (d.gust >= 35 || /TS/.test(d.wx))) {
+
+          if(icao==='TNCA'&&beepEnabled&&(d.gust>=35||/TS/.test(d.wx))){
             new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg').play();
           }
-          if (isNew && beepEnabled) {
+          if(isNew&&beepEnabled){
             new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
           }
-          // render
-          const r = metarRows[icao];
-          const alertCond = d.gust > 0 ||
-                            parseInt(d.vis,10) < 5000 ||
-                            d.wx !== '--' ||
-                            /CB/.test(d.cld);
-          r.row.classList.toggle('stale', d.age > 120);
-          r.row.classList.toggle('alert-row', alertCond);
-          r.row.querySelector('.station').classList.toggle('alert', alertCond);
-          const cells = r.row.querySelectorAll('td');
-          cells[1].textContent = d.time;       if (isNew) scheduleHighlight(cells[1]);
-          cells[2].textContent = d.wind;
-          cells[3].textContent = d.vis;
-          cells[4].textContent = d.wx;
-          cells[5].textContent = d.cld;
-          cells[6].textContent = d.td;
-          cells[7].textContent = d.qnh;
-          r.curr.textContent = hist[0] || '';
-          r.past.textContent = hist[1] || '';
-        } catch (err) {
-          console.error('METAR load error for', icao, err);
-        }
+
+          const idx = stations.indexOf(icao)*2;
+          const row = document.getElementById('metar').children[idx];
+          const c   = row.querySelectorAll('td');
+
+          // alert flags
+          const windA = d.gust>0;
+          const visA  = parseInt(d.vis,10)<5000;
+          const wxA   = d.wx!=='--';
+          const cbA   = /CB/.test(d.cld);
+
+          // apply border alerts
+          if(windA) c[2].classList.add('alert');
+          if(visA ) c[3].classList.add('alert');
+          if(wxA  ) c[4].classList.add('alert');
+          if(cbA  ) c[5].classList.add('alert');
+
+          // if any data alert, highlight ICAO col too
+          if(windA||visA||wxA||cbA) c[0].classList.add('alert');
+
+          // stale
+          row.classList.toggle('stale', d.age>120);
+
+          // fill in values
+          c[1].textContent = d.time;      if(isNew) scheduleHighlight(c[1]);
+          c[2].textContent = d.wind;
+          c[3].textContent = d.vis;
+          c[4].textContent = d.wx;
+          c[5].textContent = d.cld;
+          c[6].textContent = d.td;
+          c[7].textContent = d.qnh;
+
+          // raw
+          const rr = metarRows[icao];
+          rr.curr.textContent = hist[0]||'';
+          rr.past.textContent = hist[1]||'';
+        }catch{}
       }
       document.getElementById('last-updated').textContent =
         `METAR last updated: ${nowStamp()}`;
     }
 
-    // Decode and render TAF data
-    function decodeTaf(raw) {
-      const out   = [];
-      const issue = raw.match(/\b\d{6}Z\b/)?.[0];
-      if (issue) out.push('Issued ' + issue);
-      const range = raw.match(/\b(\d{4})\/(\d{4})\b/)?.slice(1) || [];
-      if (range.length === 2) out.push(`Valid ${range[0]}–${range[1]}Z`);
-      const parts = raw.split(/(?=FM\d{6}|TEMPO|BECMG|PROB\d{2})/);
-      parts.forEach(p => {
-        const tag = p.match(/^(FM\d{6}|TEMPO|BECMG|PROB\d{2})/)?.[1] || '';
-        let label = '';
-        if (tag.startsWith('FM')) {
-          label = `From ${tag.slice(2,4)}:${tag.slice(4,6)}Z`;
-        } else if (tag) {
-          label = tag;
-        }
-        const w = p.match(/(\d{3})(\d{2})G?(\d{2})?KT/);
-        if (w) {
-          out.push(`${label} wind ${w[1]}°@${w[2]}kt${w[3]? 'G'+w[3]+'kt':''}`);
-        }
-        const v = p.match(/ (\d{4}) /);
-        if (v) out.push(`${label} vis ${v[1]}m`);
-        const c = p.match(/(FEW|SCT|BKN|OVC)(\d{3})/);
-        if (c) {
-          const map = { FEW:'Few', SCT:'Scat', BKN:'Brk', OVC:'Ovc' };
-          out.push(`${label} ${map[c[1]]} ${c[2]}00ft`);
-        }
+    function buildTaf(){
+      const tb=document.getElementById('taf'); tb.innerHTML='';
+      tafEnds.forEach(({icao})=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td class="station">${icao}</td><td class="raw-current">Waiting…</td>`;
+        tb.append(tr);
+        tafCells[icao]=tr.querySelector('.raw-current');
       });
-      return out.join('<br/>');
     }
-
-    async function loadTaf() {
-      const hdr = document.getElementById('taf-header');
-      const row = document.getElementById('taf-row');
-      hdr.innerHTML = tafEndpoints.map(t => `<th>${t.icao}</th>`).join('');
-      const decoded = await Promise.all(tafEndpoints.map(async t => {
-        try {
-          let raw = await fetchText(t.url);
-          raw = raw.trim().replace(/\r?\n/g,' ');
-          return decodeTaf(raw);
-        } catch {
-          return 'N/A';
-        }
-      }));
-      row.innerHTML = decoded.map(d => `<td class="decoded">${d}</td>`).join('');
+    async function loadTaf(){
+      for(const {icao,url} of tafEnds){
+        try{
+          const txt=testMode
+            ? `${icao} 121900Z FM200000 28010KT 8000 SCT020`
+            : await fetchText(url);
+          tafCells[icao].textContent=txt.trim().replace(/\r?\n/g,' ');
+        }catch{tafCells[icao].textContent='N/A'}
+      }
       document.getElementById('taf-updated').textContent =
         `TAF last updated: ${nowStamp()}`;
     }
 
-    // Bonaire visibility widget
+    function buildSynop(){
+      const tb=document.getElementById('synop'); tb.innerHTML='';
+      synopEnds.forEach(({icao})=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td class="station">${icao}</td><td class="raw-current">Waiting…</td>`;
+        tb.append(tr);
+        synopCells.push(tr.querySelector('.raw-current'));
+      });
+    }
+    async function loadSynop(){
+      for(let i=0;i<synopEnds.length;i++){
+        const {icao,url}=synopEnds[i];
+        try{
+          const txt=await fetchText(url);
+          synopCells[i].textContent=`${icao} ${txt.trim().replace(/\r?\n/g,' ')}`;
+        }catch{synopCells[i].textContent='N/A'}
+      }
+    }
+
+    /* Bonaire Visibility */
     (function(){
-      const URL = 'https://www.knmidc.org/weather/bonaire/?Current';
-      const REF = 5 * 60 * 1000;
-      const ALERT = 20000;
-      const visEl = document.getElementById('vis-value');
-      const tsEl  = document.getElementById('vis-timestamp');
-      const wd    = document.getElementById('bonaire-vis-widget');
-      async function upd() {
-        let v = 'N/A', t = Date.now();
-        try {
-          const html = await fetch(proxy + encodeURIComponent(URL)).then(r=>r.text());
-          const doc  = new DOMParser().parseFromString(html,'text/html');
+      const URL='https://www.knmidc.org/weather/bonaire/?Current';
+      const REF=5*60*1000, ALERT=20000;
+      const visEl=document.getElementById('vis-value');
+      const tsEl =document.getElementById('vis-timestamp');
+      const wd   =document.getElementById('bonaire-vis-widget');
+      async function upd(){
+        let v='N/A', t=Date.now();
+        try{
+          const html=await fetch(proxy+encodeURIComponent(URL)).then(r=>r.text());
+          const doc=new DOMParser().parseFromString(html,'text/html');
           doc.querySelectorAll('td').forEach(td=>{
-            if (/Visibility/i.test(td.textContent)) {
-              const nxt = td.nextElementSibling;
-              if (nxt) v = nxt.textContent.trim();
+            if(/Visibility/i.test(td.textContent)){
+              const nxt=td.nextElementSibling;
+              if(nxt) v=nxt.textContent.trim();
             }
           });
-        } catch(e) {
-          console.error('Visibility load error', e);
-        }
-        visEl.textContent = v;
-        visEl.classList.toggle('low', parseInt(v,10) < ALERT);
-        tsEl.textContent  = `Updated ${new Date(t).toLocaleTimeString()}`;
+        }catch{}
+        visEl.textContent=v;
+        visEl.classList.toggle('low',parseInt(v,10)<ALERT);
+        tsEl.textContent=`Updated ${new Date(t).toLocaleTimeString()}`;
       }
-      wd.ondblclick = upd;
-      upd();
-      setInterval(upd, REF);
+      wd.ondblclick=upd; upd(); setInterval(upd,REF);
     })();
 
-    // Initialize
-    buildMetar();
-    await loadMetar();
-    await loadTaf();
-    setInterval(loadMetar, 60*1000);
-    setInterval(loadTaf, 10*60*1000);
+    /* INIT */
+    buildMetar();  await loadMetar();  setInterval(loadMetar,60*1000);
+    buildTaf();    await loadTaf();    setInterval(loadTaf,10*60*1000);
+    buildSynop();  await loadSynop();  setInterval(loadSynop,10*60*1000);
 
-    // Controls
-    document.getElementById('mute-btn').onclick = () => {
+    /* Controls */
+    document.getElementById('mute-btn').onclick = ()=>{
       beepEnabled = !beepEnabled;
       document.getElementById('mute-btn').textContent =
-        beepEnabled ? 'Mute Beep' : 'Unmute Beep';
+        beepEnabled?'Mute Beep':'Unmute Beep';
     };
-    document.getElementById('refresh-btn').onclick = () => {
-      loadMetar();
-      loadTaf();
+    document.getElementById('refresh-btn').onclick = ()=>{
+      loadMetar(); loadTaf(); loadSynop();
     };
-    document.getElementById('test-btn').onclick = () => {
+    document.getElementById('test-btn').onclick = ()=>{
       testMode = !testMode;
       document.getElementById('test-btn').textContent =
-        testMode ? 'Exit Test Mode' : 'Enter Test Mode';
-      loadMetar();
-      loadTaf();
+        testMode?'Exit Test Mode':'Enter Test Mode';
+      loadMetar(); loadTaf(); loadSynop();
     };
 
-    // Enable double-click copy on all <td>
-    document.body.addEventListener('dblclick', async e => {
-      const td = e.target.closest('td');
-      if (!td) return;
-      const txt = td.textContent.trim();
+    /* Double-click to copy METAR cell */
+    document.body.addEventListener('dblclick', async e=>{
+      const td=e.target.closest('#metar td');
+      if(!td) return;
       try {
-        await navigator.clipboard.writeText(txt);
-        td.classList.add('copied');
-        setTimeout(() => td.classList.remove('copied'), 600);
-      } catch {}
+        await navigator.clipboard.writeText(td.textContent.trim());
+        td.classList.add('metar-copied');
+        setTimeout(()=>td.classList.remove('metar-copied'),600);
+      }catch{}
     });
 
   })();
   </script>
 </body>
 </html>
-```
