@@ -119,18 +119,26 @@
     td.time    { font-size:32px; }
     td.vis     { font-size:28px; }
 
+    /* Raw METAR styles — font sizes bumped up */
     tr.raw td {
       background:var(--panel); text-align:left;
       padding:12px 16px; user-select:text;
     }
     .raw-current {
-      display:block; font-family:monospace; font-size:20px;
-      color:#d0d7de; white-space:pre-wrap; word-break:break-word;
+      display:block;
+      font-family:monospace;
+      font-size:22px;        /* increased from 20px */
+      color:#d0d7de;
+      white-space:pre-wrap;
+      word-break:break-word;
     }
     .raw-past {
       display:block; margin-top:4px;
-      font-family:monospace; font-size:18px;
-      color:var(--muted); white-space:pre-wrap; word-break:break-word;
+      font-family:monospace;
+      font-size:20px;        /* increased from 18px */
+      color:var(--muted);
+      white-space:pre-wrap;
+      word-break:break-word;
     }
 
     /* TAF & SYNOP */
@@ -489,3 +497,4 @@
   </script>
 </body>
 </html>
+```
