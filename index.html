@@ -33,6 +33,14 @@
       position: relative;
     }
 
+    /* Highlight updated METAR time cell with high contrast */
+    td.highlight {
+      background-color: var(--accent);
+      color: var(--bg);
+      font-weight: 700;
+      transition: background-color 0.5s ease, color 0.5s ease;
+    }
+
     /* Copy-flash for METAR only */
     @keyframes copyFlash {
       from { background-color: var(--highlight); }
@@ -244,18 +252,19 @@
               .replace(/\s(?:TEMPO|BECMG|PROB\d{2}|FM\d{6})[\s\S]*/i,'')
               .replace(/\bAUTO\b|\bCOR\b/gi,'').trim();
     }
+
     function parseMetar(raw){
       const t = cleanForParse(raw).split(/\s+/);
       const time     = t[1]||'--';
       const baseWind = t.find(x=>/^(?:VRB|\d{3})\d{2}(?:G\d{2})?KT$/.test(x))||'/////KT';
       const varGrp   = t.find(x=>/^\d{3}V\d{3}$/.test(x));
       const wind     = baseWind + (varGrp? ' '+varGrp : '');
-      const vis      = t.find(x=>/^\d{4}$/.test(x))||'--';  
-      const wx       = t.filter(x=>/^(?:\+|-)?(?:VC)?(?:TS|SH|RA|DZ|SN|FG|BR)/.test(x)).join(' ')||'--';  
-      const cld      = t.filter(x=>/^(?:FEW|SCT|BKN|OVC)/.test(x)).join(' ')||'--';  
-      const td       = t.find(x=>/^M?\d{2}\/M?\d{2}$/.test(x))||'--';  
-      const qp       = t.find(x=>/^Q\d{4}$/.test(x));  
-      let qnh='—';  
+      const vis      = t.find(x=>/^\d{4}$/.test(x))||'--';
+      const wx       = t.filter(x=>/^(?:\+|-)?(?:VC)?(?:TS|SH|RA|DZ|SN|FG|BR)/.test(x)).join(' ')||'--';
+      const cld      = t.filter(x=>/^(?:FEW|SCT|BKN|OVC)/.test(x)).join(' ')||'--';
+      const td       = t.find(x=>/^M?\d{2}\/M?\d{2}$/.test(x))||'--';
+      const qp       = t.find(x=>/^Q\d{4}$/.test(x));
+      let qnh='—';
       if(qp){
         const h=qp.slice(1), i=(parseInt(h)*0.02953).toFixed(2);
         qnh=`${h} - ${i}`;
@@ -304,15 +313,17 @@
     function scheduleHighlight(cell){
       clearTimeout(cell._t);
       cell.classList.add('highlight');
-      cell._t=setTimeout(()=>cell.classList.remove('highlight'),20*60*1000);
+      cell._t = setTimeout(
+        () => cell.classList.remove('highlight'),
+        20 * 60 * 1000
+      );
     }
 
     async function loadMetar(){
       const tb=document.getElementById('metar');
       stations.forEach((icao,i)=>{
-        const row = tb.children[i*2]; // even rows
+        const row = tb.children[i*2];
         const c   = row.querySelectorAll('td');
-        // clear old alerts
         [0,2,3,4,5].forEach(idx=>c[idx].classList.remove('alert'));
       });
 
@@ -342,26 +353,23 @@
           const row = document.getElementById('metar').children[idx];
           const c   = row.querySelectorAll('td');
 
-          // alert flags
           const windA = d.gust>0;
           const visA  = parseInt(d.vis,10)<5000;
           const wxA   = d.wx!=='--';
           const cbA   = /CB/.test(d.cld);
 
-          // apply border alerts
           if(windA) c[2].classList.add('alert');
           if(visA ) c[3].classList.add('alert');
           if(wxA  ) c[4].classList.add('alert');
           if(cbA  ) c[5].classList.add('alert');
 
-          // if any data alert, highlight ICAO col too
           if(windA||visA||wxA||cbA) c[0].classList.add('alert');
 
-          // stale
           row.classList.toggle('stale', d.age>120);
 
-          // fill in values
-          c[1].textContent = d.time;      if(isNew) scheduleHighlight(c[1]);
+          c[1].textContent = d.time;
+          if(isNew) scheduleHighlight(c[1]);
+
           c[2].textContent = d.wind;
           c[3].textContent = d.vis;
           c[4].textContent = d.wx;
@@ -369,7 +377,6 @@
           c[6].textContent = d.td;
           c[7].textContent = d.qnh;
 
-          // raw
           const rr = metarRows[icao];
           rr.curr.textContent = hist[0]||'';
           rr.past.textContent = hist[1]||'';
