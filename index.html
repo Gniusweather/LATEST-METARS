@@ -1,4 +1,4 @@
----<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -217,10 +217,17 @@
       color:var(--text-secondary);
       white-space:pre-wrap; word-break:break-word;
     }
+
+    /* Shrink the Bonaire widget by 25% */
+    .weather-widget {
+      transform: scale(0.75);
+      transform-origin: top left;
+      top: 12px;
+      left: 12px;
+    }
   </style>
 </head>
 <body>
-
   <!-- Bonaire Visibility Widget -->
   <div class="weather-widget" id="bonaire-vis-widget" aria-live="polite" title="Double-click to refresh">
     <div class="widget-head">
@@ -381,7 +388,7 @@
       return r.text();
     }
 
-    /* METAR/TAF/SYNOP – unchanged */
+    /* METAR/TAF/SYNOP logic */
     const stations = ['TNCA','TNCB','TNCC','TNCM','SVMI','SVVA'];
     const tafUrls  = stations.slice(0,3).map(icao=>({
       icao, url:`https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/${icao}.TXT`
@@ -398,6 +405,7 @@
               .replace(/\s(?:TEMPO|BECMG|PROB\d{2}|FM\d{6})[\s\S]*/i,'')
               .replace(/\bAUTO\b|\bCOR\b/gi,'').trim();
     }
+
     function parseMetar(raw){
       const t     = cleanForParse(raw).split(/\s+/);
       const time  = t[1]||'--';
@@ -489,7 +497,7 @@
           const windA= d.gust>0;
           const visA = parseInt(d.vis,10)<=5000;
           const wxA  = d.wx!=='--';
-          const cloudA=/…/.test(d.cld); // same logic as above
+          const cloudA=/…/.test(d.cld);
           if(windA)  c[2].classList.add('alert');
           if(visA)   c[3].classList.add('alert');
           if(wxA)    c[4].classList.add('alert');
@@ -591,3 +599,4 @@
   </script>
 </body>
 </html>
+```
